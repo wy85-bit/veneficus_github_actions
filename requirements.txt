@@ -1,4 +1,4 @@
 distutils-pytest
 selenium 
-undetected_chromedriver
+undetected-chromedriver
 webdriver_manager
