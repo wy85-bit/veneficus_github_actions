@@ -9,27 +9,13 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 
-options = Options()
-options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-gpu')
-options.add_argument('--disable-extensions')
-options.add_argument('--start-maximized')
-# Memory optimization
-options.add_argument('--disk-cache-size=1')
-options.add_argument('--media-cache-size=1')
-options.add_argument('--incognito')
-options.add_argument('--remote-debugging-port=9222')
-options.add_argument('--aggressive-cache-discard')
 
-service = Service('/usr/local/bin/chromedriver')
+def go_to_main_page_search_term_data(driver):
+    driver.get('https://www.circle8.nl/zoeken?query=data')
 
-driver = webdriver.Chrome(service=service, options=options)
-driver.get('google.com')
-
-driver.quit()
-
+with uc.Chrome(headless=True, use_subprocess=False) as driver:
+    go_to_main_page_search_term_data(driver=driver)
+      
 print(driver.title)
 with open('./GitHub_Action_Results.txt', 'w') as f:
     f.write(f"This was written with a GitHub action {driver.title}")
