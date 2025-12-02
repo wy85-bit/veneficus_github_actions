@@ -1,3 +1,4 @@
+distutils
 selenium 
 undetected_chromedriver
 webdriver_manager
