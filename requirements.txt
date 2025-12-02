@@ -1,5 +1,5 @@
 selenium 
 webdriver_manager
-pip install --upgrade setuptools
+setuptools
 distutils-pytest
 undetected-chromedriver==3.4.5
