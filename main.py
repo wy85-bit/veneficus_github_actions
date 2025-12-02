@@ -116,11 +116,11 @@ def main():
         new_df = pd.concat([new_df_data,new_df_data_engineer,new_df_machine_learning_engineer])
        
     # MERGE + UPDATE
-    df = new_df
+        df = new_df
     
-    print(df)
-    df = df.loc[~df.index.duplicated(keep='first'), :]
-    df.to_json(path_to_json_file, orient="index", indent=5)
+        print(df)
+        df = df.loc[~df.index.duplicated(keep='first'), :]
+        df.to_json(path_to_json_file, orient="index", indent=5)
     
     with open('./GitHub_Action_Results.txt', 'w') as f:
         f.write(f"This was written with a GitHub action")
