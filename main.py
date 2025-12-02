@@ -18,9 +18,8 @@ def main():
     with uc.Chrome(headless=True, use_subprocess=False) as driver:
         go_to_main_page_search_term_data(driver=driver)
 
-print(driver.title)
 with open('./GitHub_Action_Results.txt', 'w') as f:
-    f.write(f"This was written with a GitHub action {driver.title}")
+    f.write(f"This was written with a GitHub action")
     print('test')
 
 if __name__ == "__main__":
