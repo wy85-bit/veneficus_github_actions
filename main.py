@@ -119,7 +119,7 @@ def main():
         df = new_df
     
         print(df)
-        df = df.loc[~df.index.duplicated(keep='first'), :]
+        #df = df.loc[~df.index.duplicated(keep='first'), :]
         df.to_json(path_to_json_file, orient="index", indent=5)
     
     with open('./GitHub_Action_Results.txt', 'w') as f:
