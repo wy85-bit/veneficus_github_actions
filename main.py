@@ -10,7 +10,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 import undetected_chromedriver as uc
 
-JSON_FILE = r'circle8.json'
+path_to_json_file = r'circle8.json'
 import undetected_chromedriver as uc
 import time
 import pandas as pd
