@@ -1,4 +1,4 @@
 distutils-pytest
 selenium 
-undetected-chromedriver
+undetected-chromedriver==3.4.5
 webdriver_manager
