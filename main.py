@@ -24,7 +24,7 @@ options.add_argument('--remote-debugging-port=9222')
 options.add_argument('--aggressive-cache-discard')
 
 service = Service('/usr/local/bin/chromedriver')
-    
+
 driver = webdriver.Chrome(service=service, options=options)
 driver.get('google.com')
 
