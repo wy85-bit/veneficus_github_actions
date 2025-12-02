@@ -3,7 +3,6 @@ webdriver_manager
 setuptools
 distutils-pytest
 undetected-chromedriver
-time
 pandas
 os
 dotenv
