@@ -25,8 +25,18 @@ jobs:
         run: |
           pip install selenium webdriver-manager pytest
 
-      - name: Upload JSON artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gegenereerde-json
-          path: output/circle8.json
+      - name: Commit JSON changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Voeg alleen gewijzigde bestanden toe
+          git add data/generated.json
+
+          # Commit alleen als er iets veranderd is
+          if ! git diff --cached --quiet; then
+            git commit -m "Update JSON data [skip ci]"
+            git push
+          else
+            echo "Geen veranderingen om te committen"
+          fi
