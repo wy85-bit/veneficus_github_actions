@@ -13,23 +13,32 @@ load_dotenv()
 
 def go_to_main_page_search_term_data(driver):
     driver.get('https://www.circle8.nl/zoeken?query=data')
+    wait_for_vacancies(driver)
     
 def go_to_main_page_search_term_data_engineer(driver):
     driver.get('https://www.circle8.nl/zoeken?query=data%20engineer')
+    wait_for_vacancies(driver)
     
 def go_to_main_page_search_term_data_machine_learning_engineer(driver):
     driver.get('https://www.circle8.nl/zoeken?query=machine%20learning%20engineer')
+    wait_for_vacancies(driver)
     
 def list_vacancy_links(driver):
     elements = driver.find_elements(By.XPATH, '//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
     links = [element.get_attribute("href") for element in elements]
     return links
 
-# %%
 def list_pagination_links(driver):
     elements = driver.find_elements(By.XPATH, '//div[@class="c-lister-pagination__wrapper"]//a')
     pagination_links = [element.get_attribute("href") for element in elements]
     return pagination_links
+
+def wait_for_vacancies(driver):
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located(
+            (By.XPATH, '//a[starts-with(@href, "/opdracht")]')
+        )
+    )
 
 def scrape(driver):
     df_rows = []
