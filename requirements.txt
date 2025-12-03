@@ -5,3 +5,4 @@ distutils-pytest
 undetected-chromedriver
 pandas
 dotenv
+json
