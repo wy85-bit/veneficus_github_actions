@@ -107,8 +107,11 @@ def main():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     with driver as driver:
         go_to_main_page_search_term_data(driver)
-        new_df_data = scrape(driver=driver)        
-        new_df = pd.concat([new_df_data])
+        new_df_data = scrape(driver=driver)
+        go_to_main_page_search_term_data_engineer(driver=driver)
+        new_df_data_engineer = scrape(driver=driver)
+
+        new_df = pd.concat([new_df_data,new_df_data_engineer])
         df = new_df
 
     print(df)
