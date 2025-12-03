@@ -2,6 +2,6 @@ selenium
 webdriver_manager
 setuptools
 distutils-pytest
-undetected-chromedriver==3.4.5
+undetected-chromedriver
 pandas
 dotenv
