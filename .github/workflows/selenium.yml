@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install selenium webdriver-manager pytest
-
+          pip install pandas
       - name: Run Python script to generate JSON
         run: |
           pip install -r requirements.txt || true
