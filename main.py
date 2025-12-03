@@ -23,7 +23,7 @@ options.add_argument('--incognito')
 options.add_argument('--remote-debugging-port=9222')
 options.add_argument('--aggressive-cache-discard')
 
-service = Service('/usr/local/bin/chromedriver')
+service = Service(ChromeDriverManager().install())
     
 driver = webdriver.Chrome(service=service, options=options)
 driver.get('google.com')
