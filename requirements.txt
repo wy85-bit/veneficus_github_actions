@@ -2,7 +2,6 @@ selenium
 webdriver_manager
 setuptools
 distutils-pytest
-undetected-chromedriver
 pandas
 dotenv
 json
