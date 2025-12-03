@@ -8,6 +8,7 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
+import json
 
 load_dotenv()
 
