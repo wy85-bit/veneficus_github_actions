@@ -4,4 +4,3 @@ setuptools
 distutils-pytest
 pandas
 dotenv
-json
