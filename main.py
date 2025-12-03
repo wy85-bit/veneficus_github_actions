@@ -26,6 +26,6 @@ options.add_argument('--aggressive-cache-discard')
 service = Service(ChromeDriverManager().install())
     
 driver = webdriver.Chrome(service=service, options=options)
-driver.get('google.com')
+driver.get('www.google.com')
 
 driver.quit()
