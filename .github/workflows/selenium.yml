@@ -10,12 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write
-      
+      contents: write     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Install Python
         uses: actions/setup-python@v5
         with:
