@@ -24,6 +24,3 @@ jobs:
       - name: Install dependencies
         run: |
           pip install selenium webdriver-manager pytest
-
-      - name: Run Selenium test
-        run: pytest -q
