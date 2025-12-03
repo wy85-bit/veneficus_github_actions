@@ -133,9 +133,8 @@ def main():
 
     print(df)
     df = df.loc[~df.index.duplicated(keep='first'), :]
-    with open("./circle8.json", "w") as f:
+    with open("circle8.json", "w") as f:
         f.write(df.to_json(orient="index", indent=4))
-
     driver.quit()
 
 if __name__ == "__main__":
