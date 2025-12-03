@@ -21,15 +21,15 @@ load_dotenv()
 
 def go_to_main_page_search_term_data(driver):
     driver.get('https://www.circle8.nl/zoeken?query=data')
-    wait_for_vacancies(driver)
+    time.sleep(5)
     
 def go_to_main_page_search_term_data_engineer(driver):
     driver.get('https://www.circle8.nl/zoeken?query=data%20engineer')
-    wait_for_vacancies(driver)
+    time.sleep(5)
     
 def go_to_main_page_search_term_data_machine_learning_engineer(driver):
     driver.get('https://www.circle8.nl/zoeken?query=machine%20learning%20engineer')
-    wait_for_vacancies(driver)
+    time.sleep(5)
     
 def list_vacancy_links(driver):
     elements = driver.find_elements(By.XPATH, '//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
