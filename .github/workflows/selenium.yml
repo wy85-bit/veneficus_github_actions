@@ -37,7 +37,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install selenium webdriver-manager pytest
-      
+
+      - name: Run Python script to generate JSON
+        run: |
+          pip install -r requirements.txt || true
+          python main.py
+    
       - name: Commit JSON changes
         run: |
           git config user.name "github-actions[bot]"
