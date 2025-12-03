@@ -24,3 +24,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install selenium webdriver-manager pytest
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gegenereerde-json
+          path: output/circle8.json
