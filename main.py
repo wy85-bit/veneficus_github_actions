@@ -106,7 +106,23 @@ def scrape(driver):
     # MERGE + UPDATE
     return new_df
 def main():
-    with uc.Chrome(headless=True, use_subprocess=False) as driver:
+
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--start-maximized')
+    # Memory optimization
+    options.add_argument('--disk-cache-size=1')
+    options.add_argument('--media-cache-size=1')
+    options.add_argument('--incognito')
+    options.add_argument('--remote-debugging-port=9222')
+    options.add_argument('--aggressive-cache-discard')
+    service = Service('/usr/local/bin/chromedriver')
+
+    with webdriver.Chrome(service=service, options=options) as driver:
         go_to_main_page_search_term_data(driver=driver)
         new_df_data = scrape(driver=driver)
         go_to_main_page_search_term_data_engineer(driver=driver)
