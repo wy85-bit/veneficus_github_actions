@@ -116,9 +116,9 @@ def main():
 
     print(df)
     df = df.loc[~df.index.duplicated(keep='first'), :]
-    json_format = df.to_json('./circle8_3-12-2025.json', orient="index", indent=5)
+    df.to_json('./circle8_3-12-2025.json', orient="index", indent=5)
     with open("circle8.json", "w") as f:
-        json.dump(json_format, f, indent=4)
+        json.dump(df, f, indent=4)
     driver.quit()
 
 if __name__ == "__main__":
