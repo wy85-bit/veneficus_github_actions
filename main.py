@@ -116,7 +116,7 @@ def main():
 
     print(df)
     df = df.loc[~df.index.duplicated(keep='first'), :]
-    df.to_json('./circle8.json', orient="index", indent=5)
+    df.to_json('circle8.json', orient="index", indent=5)
 
     driver.quit()
 
