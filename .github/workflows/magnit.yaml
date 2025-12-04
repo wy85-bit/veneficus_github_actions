@@ -1,0 +1,49 @@
+name: Run Magnit Scraper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python magnit_scraper.py
+        env:
+          MAGNIT_EMAIL: ${{ secrets.MAGNIT_EMAIL }}
+          MAGNIT_PASSWORD: ${{ secrets.MAGNIT_PASSWORD }}
+
+      - name: Commit JSON output
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add *.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Magnit update $(date '+%Y-%m-%d %H:%M')"
+            git push
+          fi
