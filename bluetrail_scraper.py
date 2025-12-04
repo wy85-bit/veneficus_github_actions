@@ -15,7 +15,7 @@ OUTPUT_FILE = f"bluetrail_{datetime.now().strftime('%Y-%m-%d')}.json"
 
 
 # ----------------------------------------
-# Driver setup (compatible with GitHub Actions)
+# Driver setup (100% compatible with GitHub Actions)
 # ----------------------------------------
 def get_driver():
     chrome_options = Options()
@@ -69,7 +69,7 @@ def safe_list(driver, xpath):
 
 
 # ----------------------------------------
-# Core scraper
+# Core scraping logic
 # ----------------------------------------
 def scrape_pages(driver, url):
     print("Scraping:", url)
@@ -101,10 +101,8 @@ def scrape_pages(driver, url):
         duur = safe_xpath(driver, "//*[@id='content']//span[3]")
         eind = safe_xpath(driver, "(//*[@id='text-4']//span)[5]")
 
-        # Vacaturetekst
         vacature_text = safe_xpath(driver, "//div[h3]")
 
-        # Lists
         eisen = safe_list(driver, "//article//ul[1]/li")
         wensen = safe_list(driver, "//article//ul[2]/li")
         competenties = safe_list(driver, "//article//ul[3]/li")
@@ -140,7 +138,7 @@ def main():
     driver = get_driver()
     all_rows = []
 
-    # Pages with search `data`
+    # Pages with search term 'data'
     for i in range(5):
         page_url = go_to_page(driver, i)
         all_rows.extend(scrape_pages(driver, page_url))
@@ -151,7 +149,6 @@ def main():
 
     driver.quit()
 
-    # Build dataframe
     df = pd.DataFrame(all_rows)
     df = df.drop_duplicates("UID").set_index("UID")
 
