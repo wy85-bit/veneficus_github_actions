@@ -8,9 +8,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
 JSON_FILE = "./circle8.json"
 TIMEOUT = 25
+
+# ==== LOAD PROXY FROM ENV ====
+PROXY = os.getenv("PROXY")  # <-- GitHub Secret
 
 
 # ----------------------------------------------------
@@ -23,30 +25,33 @@ def create_driver():
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
 
-    # IMPORTANT: not headless; we run using xvfb
+    # === RESIDENTIAL PROXY ===
+    if PROXY:
+        print("Using residential proxy:", PROXY.split('@')[-1])
+        options.add_argument(f"--proxy-server={PROXY}")
+
+    # not headless (we use xvfb in CI)
     driver = uc.Chrome(
         options=options,
         headless=False,
         use_subprocess=True
     )
 
-    # Inject stealth patches
+    # stealth patches
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         "source": """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
-            window.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [1,2,3],
-            });
             Object.defineProperty(navigator, 'languages', {
-                get: () => ['nl-NL','nl'],
+                get: () => ['nl-NL','nl']
             });
+            window.chrome = { runtime: {} };
         """
     })
 
     return driver
+
 
 
 # ----------------------------------------------------
@@ -221,6 +226,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
 # Main
 # ----------------------------------------------------
 def main():
+    print("Starting scraper...")
     driver = create_driver()
 
     try:
@@ -228,26 +234,18 @@ def main():
         df_engineer = scrape_search_term(driver, "data engineer")
         df_ml = scrape_search_term(driver, "machine learning engineer")
 
-        new_df = pd.concat([df_data, df_engineer, df_ml])
-        new_df = new_df[~new_df.index.duplicated(keep="first")]
-
-        print("\nNieuwe scrapes, unieke vacatures:", len(new_df))
-
-        # Merge met bestaande JSON
-        if os.path.exists(JSON_FILE):
-            existing_df = pd.read_json(JSON_FILE, orient="index")
-            existing_df = existing_df[
-                ~existing_df.index.isin(new_df.index)
-            ]
-            df = pd.concat([existing_df, new_df])
-        else:
-            df = new_df
-
+        df = pd.concat([df_data, df_engineer, df_ml])
         df = df[~df.index.duplicated(keep="first")]
-        df.to_json(JSON_FILE, orient="index", indent=4, force_ascii=False)
-        print(f"✅ JSON geüpdatet: {JSON_FILE}")
-        print(f"Totaal vacatures in JSON: {len(df)}")
 
+        print("\nScraped:", len(df), "vacatures")
+
+        if os.path.exists(JSON_FILE):
+            old = pd.read_json(JSON_FILE, orient="index")
+            old = old[~old.index.isin(df.index)]
+            df = pd.concat([old, df])
+
+        df.to_json(JSON_FILE, indent=4, orient="index", force_ascii=False)
+        print("Saved:", JSON_FILE)
     finally:
         driver.quit()
 
