@@ -149,6 +149,8 @@ def main():
     df = df.loc[~df.index.duplicated(keep='first'), :]
     df.to_json(path_to_json_file, orient="index", indent=5)
 
+    print("Is webdriver?", driver.execute_script("return navigator.webdriver"))
+
     if len(df) > 0:
             with open("circle8.json", "w", encoding="utf-8") as f:
                 f.write(df.to_json(orient="index", indent=4, force_ascii=False))
