@@ -1,27 +1,22 @@
-name: Scrape Circle8
+name: Scrape
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 */12 * * *"  # elke 12 uur
-
-permissions:
-  contents: write
 
 jobs:
-  scrape:
+  scraper:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install undetected-chromedriver dependencies
+      - name: Install Chromium deps
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -29,12 +24,8 @@ jobs:
             chromium-driver \
             xvfb \
             libnss3 \
-            libgconf-2-4 \
-            libxi6 \
-            libgbm1 \
-            libasound2 \
-            libxrandr2 \
             libxss1 \
+            libxrandr2 \
             libatk1.0-0 \
             libatk-bridge2.0-0 \
             libcups2 \
@@ -42,32 +33,16 @@ jobs:
             libxcomposite1 \
             libxdamage1 \
             libxfixes3 \
+            libgbm1 \
+            libasound2t64 \
             fonts-liberation \
-            libappindicator3-1 \
             libu2f-udev \
             libvulkan1
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           pip install --upgrade pip
           pip install undetected-chromedriver selenium pandas python-dotenv
 
       - name: Run scraper
-        run: |
-          xvfb-run -a python circle8_scraper.py
-
-      - name: Check for changes
-        run: |
-          if ! git diff --quiet circle8.json; then
-            echo "CHANGED=true" >> $GITHUB_ENV
-          else
-            echo "CHANGED=false" >> $GITHUB_ENV
-
-      - name: Commit updated JSON
-        if: env.CHANGED == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add circle8.json
-          git commit -m "Update Circle8 data [skip ci]"
-          git push
+        run: xvfb-run -a python circle8_scraper.py
