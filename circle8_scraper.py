@@ -136,7 +136,7 @@ def main():
             with open("circle8.json", "w", encoding="utf-8") as f:
                 f.write(df.to_json(orient="index", indent=4, force_ascii=False))
             print("\n✅ circle8.json geschreven / geüpdatet")
-        else:
+    ]else:
             print("\n⚠️ Geen vacatures gevonden — circle8.json niet weggeschreven (of leeg).")
 
 if __name__ == "__main__":
