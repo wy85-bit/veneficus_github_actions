@@ -57,10 +57,10 @@ def scrape(driver):
     for page in list_pagination_links(driver):
             print(page)
             driver.get(page)
-            time.sleep(2)
+            time.sleep(30)
             for vacancy in list_vacancy_links(driver):
                 driver.get(vacancy)
-                time.sleep(2)
+                time.sleep(30)
 
                 UID = driver.find_element(By.XPATH, '//p[@class="c-vacancy-hero__jobId detail"]').text
 
