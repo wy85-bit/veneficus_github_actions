@@ -1,91 +1,113 @@
-import os
 import time
 import pandas as pd
-import undetected_chromedriver as uc
 from datetime import datetime
-from selenium.webdriver.common.by import By
 from dotenv import load_dotenv
 
-# Load GitHub Actions secrets as environment variables
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 load_dotenv()
 
 OUTPUT_FILE = f"bluetrail_{datetime.now().strftime('%Y-%m-%d')}.json"
 
 
+# ----------------------------------------
+# Driver setup (compatible with GitHub Actions)
+# ----------------------------------------
+def get_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
+    )
+    return driver
+
+
+# ----------------------------------------
+# Helpers
+# ----------------------------------------
 def go_to_page(driver, page_nr):
-    url = f'https://www.bluetrail.nl/opdrachten/page/{page_nr + 1}/?srch=data'
+    url = f"https://www.bluetrail.nl/opdrachten/page/{page_nr+1}/?srch=data"
     driver.get(url)
+    time.sleep(2)
     return url
 
 
 def go_to_page_search_term_machine_learning(driver):
-    url = 'https://www.bluetrail.nl/opdrachten/?s=machine+learning'
+    url = "https://www.bluetrail.nl/opdrachten/?s=machine+learning"
     driver.get(url)
+    time.sleep(2)
     return url
 
 
 def list_vacancy_links(driver):
     time.sleep(2)
-    elements = driver.find_elements(By.CSS_SELECTOR, "a.u-job-card")
-    return [element.get_attribute("href") for element in elements]
+    cards = driver.find_elements(By.CSS_SELECTOR, "a.u-job-card")
+    return [c.get_attribute("href") for c in cards]
 
 
-def scrape_pages(driver, page_url):
-    print("Scraping:", page_url)
-    driver.get(page_url)
-    time.sleep(4)
+def safe_xpath(driver, xpath, default=""):
+    try:
+        return driver.find_element(By.XPATH, xpath).text.strip()
+    except:
+        return default
 
-    rows = []
-    links = list_vacancy_links(driver)
 
-    for vacancy in links:
-        driver.get(vacancy)
+def safe_list(driver, xpath):
+    try:
+        return [el.text for el in driver.find_elements(By.XPATH, xpath)]
+    except:
+        return []
+
+
+# ----------------------------------------
+# Core scraper
+# ----------------------------------------
+def scrape_pages(driver, url):
+    print("Scraping:", url)
+    driver.get(url)
+    time.sleep(3)
+
+    vacancy_links = list_vacancy_links(driver)
+    results = []
+
+    for link in vacancy_links:
+        driver.get(link)
         time.sleep(2)
 
-        try:
-            title = driver.find_element(By.CSS_SELECTOR, "h1 span").text
-        except:
-            title = ""
+        title = safe_xpath(driver, "//h1/span")
 
-        # Try expanding "show more"
+        # Expand "show more"
         try:
-            show_more_button = driver.find_element(By.XPATH, "//article//a[contains(@class, 'show-more')]")
-            driver.execute_script("arguments[0].click();", show_more_button)
+            btn = driver.find_element(By.XPATH, "//a[contains(@class,'show-more')]")
+            driver.execute_script("arguments[0].click();", btn)
             time.sleep(1)
         except:
             pass
 
-        # Extracting fields (with fallback)
-        def safe_xpath(xpath):
-            try:
-                return driver.find_element(By.XPATH, xpath).text
-            except:
-                return ""
+        UID = safe_xpath(driver, "(//p/span)[2]")
+        plaats = safe_xpath(driver, "(//p/span)[3]")
+        start = safe_xpath(driver, "(//p/span)[4]")
+        uren = safe_xpath(driver, "(//p/span)[7]")
+        deadline = safe_xpath(driver, "(//p/span)[9]")
+        duur = safe_xpath(driver, "//*[@id='content']//span[3]")
+        eind = safe_xpath(driver, "(//*[@id='text-4']//span)[5]")
 
-        UID = safe_xpath("(//p/span)[2]")
-        plaats = safe_xpath("(//p/span)[3]")
-        start = safe_xpath("(//p/span)[4]")
-        uren = safe_xpath("(//p/span)[7]")
-        deadline = safe_xpath("(//p/span)[9]")
-        duur = safe_xpath("//*[@id='content']//span[3]")
-        eind = safe_xpath("(//*[@id='text-4']//span)[5]")
-
-        # Full text scraping
-        try:
-            vacature_text = driver.find_element(By.XPATH, "//div[h3]").text
-        except:
-            vacature_text = ""
+        # Vacaturetekst
+        vacature_text = safe_xpath(driver, "//div[h3]")
 
         # Lists
-        def list_elements(xpath):
-            try:
-                return [e.text for e in driver.find_elements(By.XPATH, xpath)]
-            except:
-                return []
-
-        eisen = list_elements("//article/div//ul[1]/li")
-        wensen = list_elements("//article/div//ul[2]/li")
-        competenties = list_elements("//article/div//ul[3]/li")
+        eisen = safe_list(driver, "//article//ul[1]/li")
+        wensen = safe_list(driver, "//article//ul[2]/li")
+        competenties = safe_list(driver, "//article//ul[3]/li")
 
         row = {
             "UID": UID,
@@ -103,37 +125,34 @@ def scrape_pages(driver, page_url):
             "competenties": competenties
         }
 
-        rows.append(row)
+        results.append(row)
         time.sleep(1)
 
-    return rows
+    return results
 
 
+# ----------------------------------------
+# Main workflow
+# ----------------------------------------
 def main():
     print("Starting BlueTrail scraper...")
 
-    options = uc.ChromeOptions()
-    options.headless = True
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+    driver = get_driver()
+    all_rows = []
 
-    driver = uc.Chrome(options=options)
-
-    all_data = []
-
-    # First: pages with search term "data"
+    # Pages with search `data`
     for i in range(5):
         page_url = go_to_page(driver, i)
-        all_data.extend(scrape_pages(driver, page_url))
+        all_rows.extend(scrape_pages(driver, page_url))
 
-    # Second: machine learning page
+    # Machine learning page
     ml_url = go_to_page_search_term_machine_learning(driver)
-    all_data.extend(scrape_pages(driver, ml_url))
+    all_rows.extend(scrape_pages(driver, ml_url))
 
     driver.quit()
 
-    # Create dataframe
-    df = pd.DataFrame(all_data)
+    # Build dataframe
+    df = pd.DataFrame(all_rows)
     df = df.drop_duplicates("UID").set_index("UID")
 
     df = df[
@@ -142,7 +161,7 @@ def main():
     ]
 
     df.to_json(OUTPUT_FILE, orient="index", indent=4)
-    print("Saved JSON:", OUTPUT_FILE)
+    print("Saved:", OUTPUT_FILE)
 
 
 if __name__ == "__main__":
