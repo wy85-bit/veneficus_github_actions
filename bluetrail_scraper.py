@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
 
 #%%
-JSON_FILE = r'C:\Users\WinnieYapVeneficus\OneDrive - Veneficus B.V\yaw\Projecten\VacatureOverzicht\BlueTrail\bluetrail_{}.json'.format(datetime.now().strftime('%Y-%m-%d'))
+OUTPUT_FILE = f"bluetrail_{datetime.now().strftime('%Y-%m-%d')}.json"
 
 load_dotenv()
 # %%
@@ -141,8 +141,8 @@ def main():
                  'wensen',  
                  'competenties']]
     
-    df.to_json(path_to_json_file, orient="index", indent=4)
-
+    df.to_json(OUTPUT_FILE, orient="index", indent=4)
+    print("Saved JSON:", OUTPUT_FILE)
     
 if __name__ == "__main__":
         import multiprocessing
