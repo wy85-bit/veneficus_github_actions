@@ -6,6 +6,7 @@ import pandas as pd
 
 from playwright.sync_api import sync_playwright
 
+
 JSON_FILE = "./circle8.json"
 
 SEARCH_TERMS = [
@@ -23,24 +24,14 @@ VACANCY_SELECTORS = [
 ]
 
 
-def fingerprint_stealth(page):
-    """Stealth patches – Playwright equivalent of undetected-chromedriver."""
-    scripts = [
-        # navigator.webdriver = false
-        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})",
-
-        # Fake plugins
-        "Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]})",
-
-        # Fake languages
-        "Object.defineProperty(navigator, 'languages', {get: () => ['nl-NL','nl']})",
-
-        # Add chrome object
-        "window.chrome = {runtime: {}}"
-    ]
-
-    for script in scripts:
-        page.add_init_script(script)
+def stealth_fingerprint(page):
+    # Removes webdriver flag
+    page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]});
+        Object.defineProperty(navigator, 'languages', {get: () => ['nl-NL','nl']});
+        window.chrome = { runtime: {} };
+    """)
 
 
 def hash_uid(url: str):
@@ -103,40 +94,33 @@ def scrape_search_term(page, term):
             print(f"Error scraping {link}: {e}")
 
     if rows:
-        df = pd.DataFrame(rows).set_index("UID")
-    else:
-        df = pd.DataFrame()
-
-    return df
+        return pd.DataFrame(rows).set_index("UID")
+    return pd.DataFrame()
 
 
 def main():
-    proxy = os.getenv("PROXY")
-
     with sync_playwright() as p:
 
-        browser_args = [
-            "--disable-blink-features=AutomationControlled",
-        ]
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+            ]
+        )
 
-        context_options = {
-            "viewport": {"width": 1920, "height": 1080},
-            "user_agent": (
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/123.0.0.0 Safari/537.36"
             )
-        }
-
-        if proxy:
-            context_options["proxy"] = {"server": proxy}
-            print("Using proxy:", proxy)
-
-        browser = p.chromium.launch(headless=True, args=browser_args)
-        context = browser.new_context(**context_options)
+        )
 
         page = context.new_page()
-        fingerprint_stealth(page)
+        stealth_fingerprint(page)
 
         all_dfs = []
 
@@ -149,16 +133,4 @@ def main():
 
         if os.path.exists(JSON_FILE):
             old = pd.read_json(JSON_FILE, orient="index")
-            old = old[~old.index.isin(new_df.index)]
-            final_df = pd.concat([old, new_df])
-        else:
-            final_df = new_df
-
-        final_df.to_json(JSON_FILE, indent=2, orient="index")
-        print("Saved:", JSON_FILE)
-
-        browser.close()
-
-
-if __name__ == "__main__":
-    main()
+            old = old[~old.ind]()
