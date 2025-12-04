@@ -1,106 +1,149 @@
 import os
 import time
 import json
+import traceback
+from typing import List, Dict
+
 import pandas as pd
 import undetected_chromedriver as uc
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
+
 
 JSON_FILE = "./circle8.json"
 TIMEOUT = 25
+MAX_RETRIES_VACANCY = 3
+MAX_RETRIES_REQUEST = 3
 
-# ==== LOAD PROXY FROM ENV ====
-PROXY = os.getenv("PROXY")  # <-- GitHub Secret
+
+def log(msg: str) -> None:
+    print(msg, flush=True)
 
 
 # ----------------------------------------------------
 # Stealth Chrome driver (undetected_chromedriver)
 # ----------------------------------------------------
 def create_driver():
+    """Create a stealth Chrome driver using undetected_chromedriver.
+
+    - Forces use of Google Chrome (installed in CI at /usr/bin/google-chrome)
+    - Uses a residential proxy if PROXY env var is set
+    - Runs non-headless; in CI we wrap with xvfb-run
+    """
+    proxy = os.getenv("PROXY", "").strip()
+
     options = uc.ChromeOptions()
+    # Force Google Chrome instead of any system Chromium
+    options.binary_location = "/usr/bin/google-chrome"
+
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-popup-blocking")
 
-    # === RESIDENTIAL PROXY ===
-    if PROXY:
-        print("Using residential proxy:", PROXY.split('@')[-1])
-        options.add_argument(f"--proxy-server={PROXY}")
+    if proxy:
+        # Don't print credentials
+        log(f"Using residential proxy: {proxy.split('@')[-1]}")
+        options.add_argument(f"--proxy-server={proxy}")
 
-    # not headless (we use xvfb in CI)
+    # NOT headless here; in CI we run via xvfb-run to simulate a display
     driver = uc.Chrome(
         options=options,
         headless=False,
-        use_subprocess=True
+        use_subprocess=True,
     )
 
-    # stealth patches
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['nl-NL','nl']
-            });
-            window.chrome = { runtime: {} };
-        """
-    })
+    # Stealth patches: hide webdriver etc.
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                window.chrome = { runtime: {} };
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1,2,3,4,5],
+                });
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['nl-NL','nl'],
+                });
+            """
+        },
+    )
 
+    log(f"Browser version: {driver.capabilities.get('browserVersion')}")
     return driver
-
 
 
 # ----------------------------------------------------
 # Helper: URL openen + lazy-loading forceren
 # ----------------------------------------------------
-def safe_get(driver, url, wait_xpath=None):
+def safe_get(driver, url: str, wait_xpath: str = None, timeout: int = TIMEOUT, debug_label: str = "page"):
+    """Navigate to a URL and optionally wait for an XPath.
+
+    On timeout, we dump the HTML to a debug file.
+    """
+    log(f"-> GET {url}")
     driver.get(url)
 
-    # Forceer JS/rendering
+    # Trigger JS/lazy loading
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(1.0)
     driver.execute_script("window.scrollTo(0, 0);")
     time.sleep(0.5)
 
     if wait_xpath:
-        WebDriverWait(driver, TIMEOUT).until(
-            EC.presence_of_all_elements_located((By.XPATH, wait_xpath))
-        )
+        try:
+            WebDriverWait(driver, timeout).until(
+                EC.presence_of_all_elements_located((By.XPATH, wait_xpath))
+            )
+        except TimeoutException:
+            log(f"⚠️ Timeout waiting for selector: {wait_xpath} on {url}")
+            # Dump partial HTML for debugging
+            fname = f"debug_{debug_label}.html"
+            try:
+                with open(fname, "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+                log(f"Saved debug HTML: {fname}")
+            except Exception as e:
+                log(f"Failed to save debug HTML: {e}")
+            raise
 
 
 # ----------------------------------------------------
-# Pagination links ophalen
+# Pagination links
 # ----------------------------------------------------
-def get_pagination_links(driver):
+def get_pagination_links(driver) -> List[str]:
     elements = driver.find_elements(
         By.XPATH,
         '//nav[contains(@class,"pagination")]//a[contains(@href,"page=")]',
     )
     if not elements:
         return [driver.current_url]
-    return sorted({e.get_attribute("href") for e in elements})
+    return sorted({e.get_attribute("href") for e in elements if e.get_attribute("href")})
 
 
 # ----------------------------------------------------
-# Vacature-links op een listing pagina
+# Vacancy listing links
 # ----------------------------------------------------
-def get_vacancy_links(driver):
-    safe_get(driver, driver.current_url)
+def get_vacancy_links(driver) -> List[str]:
     elements = driver.find_elements(
         By.XPATH,
         '//a[contains(@class,"c-card-vacancy__link") and contains(@href,"/opdracht")]',
     )
-    return list({e.get_attribute("href") for e in elements})
+    return list({e.get_attribute("href") for e in elements if e.get_attribute("href")})
 
 
 # ----------------------------------------------------
-# UID extraheren met fallback
+# UID extraction
 # ----------------------------------------------------
-def get_uid(driver):
+def get_uid(driver) -> str:
     els = driver.find_elements(
         By.XPATH,
         '//div[contains(@class,"jobid")]//p',
@@ -108,7 +151,7 @@ def get_uid(driver):
     if els:
         return els[0].text.strip()
 
-    # Fallback: genereer UID op basis van titel
+    # Fallback: generate UID from title
     title = driver.find_element(
         By.XPATH, '//h1[contains(@class,"vacancy")]'
     ).text.strip()
@@ -116,10 +159,10 @@ def get_uid(driver):
 
 
 # ----------------------------------------------------
-# Eén vacaturepagina scrapen
+# Single vacancy scraping
 # ----------------------------------------------------
-def scrape_one_vacancy(driver, url):
-    safe_get(driver, url)
+def scrape_one_vacancy(driver, url: str) -> Dict:
+    safe_get(driver, url, debug_label="vacancy")
 
     title = driver.find_element(
         By.XPATH, '//h1[contains(@class,"vacancy")]'
@@ -131,10 +174,10 @@ def scrape_one_vacancy(driver, url):
         By.XPATH,
         '//div[contains(@class,"usp-list")]//div[contains(@class,"usp-item")]',
     )
-    specs = [s.text.strip() for s in specs]
+    specs_text = [s.text.strip() for s in specs]
 
-    def get_field(idx):
-        return specs[idx] if idx < len(specs) else ""
+    def get_field(idx: int) -> str:
+        return specs_text[idx] if idx < len(specs_text) else ""
 
     plaats = get_field(0)
     duur = get_field(1)
@@ -148,7 +191,7 @@ def scrape_one_vacancy(driver, url):
     )
     text = text_block[0].text if text_block else ""
 
-    def extract_list(label):
+    def extract_list(label: str) -> List[str]:
         xpath = f'//h3[contains(text(),"{label}")]/following::ul[1]/li'
         return [
             el.text.strip()
@@ -176,49 +219,78 @@ def scrape_one_vacancy(driver, url):
 
 
 # ----------------------------------------------------
-# Alle vacatures voor één zoekterm scrapen
+# Scrape all pages for one search term
 # ----------------------------------------------------
 def scrape_search_term(driver, term: str) -> pd.DataFrame:
-    print(f"\n=== Zoekterm: {term} ===")
+    log(f"\n=== Zoekterm: {term} ===")
     search_url = f"https://www.circle8.nl/zoeken?query={term.replace(' ', '%20')}"
+
+    # First page
     safe_get(
         driver,
         search_url,
         wait_xpath='//a[contains(@class,"c-card-vacancy__link")]',
+        debug_label=f"search_{term.replace(' ', '_')}",
     )
 
     pages = get_pagination_links(driver)
-    print(f"Pagina's gevonden: {len(pages)}")
+    log(f"Pagina's gevonden voor '{term}': {len(pages)}")
 
     rows = []
 
     for page in pages:
-        print(f"  -> Pagina: {page}")
-        safe_get(
-            driver,
-            page,
-            wait_xpath='//a[contains(@class,"c-card-vacancy__link")]',
-        )
+        log(f"  -> Pagina: {page}")
+        # Retry wrapper for network issues
+        for attempt in range(1, MAX_RETRIES_REQUEST + 1):
+            try:
+                safe_get(
+                    driver,
+                    page,
+                    wait_xpath='//a[contains(@class,"c-card-vacancy__link")]',
+                    debug_label=f"list_{term.replace(' ', '_')}_{attempt}",
+                )
+                break
+            except TimeoutException:
+                log(f"⚠️ Timeout op {page} (attempt {attempt}/{MAX_RETRIES_REQUEST})")
+                if attempt == MAX_RETRIES_REQUEST:
+                    log("❌ Pagina overgeslagen na meerdere pogingen.")
+                    continue
+
         vacancies = get_vacancy_links(driver)
-        print(f"     Vacatures op deze pagina: {len(vacancies)}")
+        log(f"     Vacatures op deze pagina: {len(vacancies)}")
 
         for v in vacancies:
-            try:
-                row = scrape_one_vacancy(driver, v)
-                rows.append(row)
-            except Exception as e:
-                print(f"⚠️ Fout bij vacature {v}: {e}")
+            for attempt in range(1, MAX_RETRIES_VACANCY + 1):
+                try:
+                    row = scrape_one_vacancy(driver, v)
+                    rows.append(row)
+                    break
+                except TimeoutException:
+                    log(f"⚠️ Timeout bij vacature {v} (attempt {attempt}/{MAX_RETRIES_VACANCY})")
+                    if attempt == MAX_RETRIES_VACANCY:
+                        log(f"❌ Vacature overgeslagen: {v}")
+                except WebDriverException as we:
+                    log(f"⚠️ WebDriverException bij {v}: {we}")
+                    if attempt == MAX_RETRIES_VACANCY:
+                        log(f"❌ Vacature overgeslagen (webdriver): {v}")
+                except Exception as e:
+                    log(f"⚠️ Onbekende fout bij {v}: {e}")
+                    traceback.print_exc()
+                    if attempt == MAX_RETRIES_VACANCY:
+                        log(f"❌ Vacature overgeslagen (unknown error): {v}")
 
     if not rows:
-        # Debug snapshot als er niks gevonden is
-        debug_file = f"debug_{term.replace(' ', '_')}.html"
-        with open(debug_file, "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        print(f"⚠️ Geen vacatures gevonden voor '{term}'. HTML snapshot: {debug_file}")
+        debug_file = f"debug_no_vacancies_{term.replace(' ', '_')}.html"
+        try:
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+            log(f"⚠️ Geen vacatures gevonden voor '{term}'. HTML snapshot: {debug_file}")
+        except Exception as e:
+            log(f"Kon debug HTML niet wegschrijven: {e}")
         return pd.DataFrame()
 
     df = pd.DataFrame(rows).set_index("UID")
-    print(f"Totaal vacatures voor '{term}': {len(df)}")
+    log(f"Totaal vacatures voor '{term}': {len(df)}")
     return df
 
 
@@ -226,7 +298,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
 # Main
 # ----------------------------------------------------
 def main():
-    print("Starting scraper...")
+    log("Starting Circle8 scraper...")
     driver = create_driver()
 
     try:
@@ -234,20 +306,36 @@ def main():
         df_engineer = scrape_search_term(driver, "data engineer")
         df_ml = scrape_search_term(driver, "machine learning engineer")
 
-        df = pd.concat([df_data, df_engineer, df_ml])
-        df = df[~df.index.duplicated(keep="first")]
+        new_df = pd.concat([df_data, df_engineer, df_ml])
+        new_df = new_df[~new_df.index.duplicated(keep="first")]
 
-        print("\nScraped:", len(df), "vacatures")
+        log(f"\nNieuwe scrapes, unieke vacatures: {len(new_df)}")
 
         if os.path.exists(JSON_FILE):
-            old = pd.read_json(JSON_FILE, orient="index")
-            old = old[~old.index.isin(df.index)]
-            df = pd.concat([old, df])
+            try:
+                existing_df = pd.read_json(JSON_FILE, orient="index")
+            except Exception:
+                log("⚠️ Kon bestaande JSON niet lezen, begin opnieuw.")
+                existing_df = pd.DataFrame()
 
-        df.to_json(JSON_FILE, indent=4, orient="index", force_ascii=False)
-        print("Saved:", JSON_FILE)
+            if not existing_df.empty:
+                existing_df = existing_df[~existing_df.index.isin(new_df.index)]
+                df = pd.concat([existing_df, new_df])
+            else:
+                df = new_df
+        else:
+            df = new_df
+
+        df = df[~df.index.duplicated(keep="first")]
+        df.to_json(JSON_FILE, orient="index", indent=4, force_ascii=False)
+        log(f"✅ JSON geüpdatet: {JSON_FILE}")
+        log(f"Totaal vacatures in JSON: {len(df)}")
+
     finally:
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
