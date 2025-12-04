@@ -2,8 +2,6 @@ name: Scrape Circle8
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * *"
 
 permissions:
   contents: write
@@ -11,38 +9,26 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    env:
+      PROXY: ${{ secrets.PROXY }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Remove broken Chromium versions
-        run: |
-          sudo apt-get remove -y chromium-browser chromium-driver || true
-          sudo rm -f /usr/bin/chromium-browser || true
-          sudo rm -f /usr/bin/chromium || true
-
-      - name: Install Google Chrome Stable
-        run: |
-          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./google-chrome-stable_current_amd64.deb
-          google-chrome --version
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Python deps
+      - name: Install deps
         run: |
           pip install --upgrade pip
           pip install undetected-chromedriver selenium pandas python-dotenv
 
-      - name: Run scraper via Xvfb (UC in non-headless)
-        run: |
-          xvfb-run -a python circle8_scraper.py
+      - name: Run scraper via Xvfb
+        run: xvfb-run -a python circle8_scraper.py
 
-      - name: Commit JSON changes
+      - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
