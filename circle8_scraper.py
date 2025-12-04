@@ -1,13 +1,24 @@
 # %%
 JSON_FILE = r'C:\Users\WinnieYapVeneficus\OneDrive - Veneficus B.V\yaw\Projecten\VacatureOverzicht\Circle8\circle8.json'
 
-# %%
-import undetected_chromedriver as uc
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import pandas as pd
 import os
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
+import json
 
 load_dotenv()
 
@@ -110,8 +121,14 @@ def scrape(driver):
 # %%
 def main():
     path_to_json_file = JSON_FILE
+    options = Options()
+    options.add_argument("--headless=new")   # Headless voor CI
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    with uc.Chrome(headless=True, use_subprocess=False) as driver:
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    with driver as driver:
+
         go_to_main_page_search_term_data(driver=driver)
         new_df_data = scrape(driver=driver)
         go_to_main_page_search_term_data_engineer(driver=driver)
