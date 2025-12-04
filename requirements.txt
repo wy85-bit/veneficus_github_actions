@@ -4,3 +4,4 @@ setuptools
 distutils-pytest
 pandas
 dotenv
+undetected-chromedriver
