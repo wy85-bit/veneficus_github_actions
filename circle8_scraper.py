@@ -163,7 +163,7 @@ def scrape_search_term(driver, term):
     print(f"\n=== Scraping term: {term} ===")
 
     search_url = f"https://www.circle8.nl/zoeken?query={term.replace(' ', '%20')}"
-    safe_get(driver, search_url, wait_xpath='//a[contains(@href, "/opdracht")]')
+    safe_get(driver, search_url, wait_xpath='//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
 
     pages = list_pagination_links(driver)
     print(f"Pages found: {len(pages)}")
@@ -172,7 +172,7 @@ def scrape_search_term(driver, term):
 
     for page in pages:
         print(f" -> Page: {page}")
-        safe_get(driver, page, wait_xpath='//a[contains(@href, "/opdracht")]')
+        safe_get(driver, page, wait_xpath='//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
         vacancies = list_vacancy_links(driver)
         print(f"    Vacancies: {len(vacancies)}")
 
