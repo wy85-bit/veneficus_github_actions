@@ -1,60 +1,55 @@
-name: Run Selenium Scraper
+name: Scrape Circle8
 
 on:
-  schedule: 
-    - cron: '0 15 * * *' # Runs every day at 15:00.
-  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"   # elke 12 uur (pas aan zoals jij wil)
+  workflow_dispatch:         # handmatig starten
 
 jobs:
-  test:
+  run-scraper:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: write     
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Checkout repository
+    permissions:
+      contents: write        # <-- NODIG om commits te mogen doen
+
+    steps:
+      - name: 🔄 Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true   # <-- NODIG voor pushen!
-  
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Install Python
+          persist-credentials: true           # <-- BELANGRIJK: zodat git push werkt
+
+      - name: 🐍 Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install Google Chrome
+      - name: 🌐 Install Google Chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Install dependencies
+      - name: 📦 Install Python dependencies
         run: |
-          pip install selenium webdriver-manager pytest
-          pip install pandas
-      - name: Run Python script to generate JSON
+          pip install --upgrade pip
+          pip install selenium webdriver-manager pandas python-dotenv
+
+      - name: 🚀 Run Circle8 Scraper
         run: |
-          pip install -r requirements.txt || true
-          python main.py
-    
-      - name: Commit JSON changes
+          python circle8_scraper.py
+
+      - name: 📁 Check if circle8.json has changed
+        run: |
+          if ! git diff --quiet circle8.json; then
+            echo "CHANGED=true" >> $GITHUB_ENV
+          else
+            echo "CHANGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: 💾 Commit & push updated circle8.json
+        if: env.CHANGED == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Voeg alleen gewijzigde bestanden toe
           git add circle8.json
-
-          # Commit alleen als er iets veranderd is
-          if ! git diff --cached --quiet; then
-            git commit -m "Update JSON data [skip ci]"
-            git push
-          else
-            echo "Geen veranderingen om te committen"
-          fi
+          git commit -m "Update circle8 data [skip ci]"
+          git push
