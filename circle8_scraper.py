@@ -135,7 +135,7 @@ def get_pagination_links(driver) -> List[str]:
 def get_vacancy_links(driver) -> List[str]:
     elements = driver.find_elements(
         By.XPATH,
-        '//a[contains(@class,"c-card-vacancy__link") and contains(@href,"/opdracht")]',
+        '//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]',
     )
     return list({e.get_attribute("href") for e in elements if e.get_attribute("href")})
 
