@@ -1,24 +1,12 @@
 # %%
 JSON_FILE = r'./circle8.json'
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import undetected_chromedriver as uc
 import time
 import pandas as pd
 import os
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
-import json
 
 load_dotenv()
 
@@ -57,10 +45,10 @@ def scrape(driver):
     for page in list_pagination_links(driver):
             print(page)
             driver.get(page)
-            time.sleep(30)
+            time.sleep(2)
             for vacancy in list_vacancy_links(driver):
                 driver.get(vacancy)
-                time.sleep(30)
+                time.sleep(2)
 
                 UID = driver.find_element(By.XPATH, '//p[@class="c-vacancy-hero__jobId detail"]').text
 
@@ -121,14 +109,8 @@ def scrape(driver):
 # %%
 def main():
     path_to_json_file = JSON_FILE
-    options = Options()
-    options.add_argument("--headless=new")   # Headless voor CI
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    with driver as driver:
-
+    with uc.Chrome(headless=True, use_subprocess=False) as driver:
         go_to_main_page_search_term_data(driver=driver)
         new_df_data = scrape(driver=driver)
         go_to_main_page_search_term_data_engineer(driver=driver)
@@ -148,9 +130,7 @@ def main():
     print(df)
     df = df.loc[~df.index.duplicated(keep='first'), :]
     df.to_json(path_to_json_file, orient="index", indent=5)
-
-    print("Is webdriver?", driver.execute_script("return navigator.webdriver"))
-
+    
     if len(df) > 0:
             with open("circle8.json", "w", encoding="utf-8") as f:
                 f.write(df.to_json(orient="index", indent=4, force_ascii=False))
@@ -163,5 +143,4 @@ if __name__ == "__main__":
         multiprocessing.freeze_support()
         main()
 
-# %%
 
