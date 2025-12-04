@@ -24,33 +24,23 @@ def create_driver():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-extensions")
-    options.add_argument("--disable-popup-blocking")
 
-    # Belangrijk: NIET headless, we draaien via xvfb in CI
+    # Headless MUST be False (we use xvfb)
     driver = uc.Chrome(
         options=options,
         headless=False,
         use_subprocess=True,
+        version_main=None,   # 🟩 Critical: forces UC to download the correct Chrome
     )
 
-    # Stealth patch: navigator.webdriver, plugins, languages, chrome etc.
-    driver.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument",
-        {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-                window.chrome = { runtime: {} };
-                Object.defineProperty(navigator, 'plugins', {
-                    get: () => [1,2,3,4,5],
-                });
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['nl-NL','nl'],
-                });
-            """
-        },
-    )
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3], });
+            Object.defineProperty(navigator, 'languages', { get: () => ['nl-NL','nl'], });
+        """
+    })
 
     return driver
 
