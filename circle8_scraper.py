@@ -229,7 +229,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
     safe_get(
         driver,
         search_url,
-        wait_xpath='//a[contains(@class,"c-vacancy-grid-card")]',
+        wait_xpath='//a[contains(@class,"c-vacancy-grid-card c-vacancy-grid-card_wrapper vacancy-lister-item ")]',
         debug_label=f"search_{term.replace(' ', '_')}",
     )
 
@@ -246,7 +246,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
                 safe_get(
                     driver,
                     page,
-                    wait_xpath='//a[contains(@class,"c-vacancy-grid-card")]',
+                    wait_xpath='//a[contains(@class,"c-vacancy-grid-card c-vacancy-grid-card_wrapper vacancy-lister-item ")]',
                     debug_label=f"list_{term.replace(' ', '_')}_{attempt}",
                 )
                 break
