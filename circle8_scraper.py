@@ -246,7 +246,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
                 safe_get(
                     driver,
                     page,
-                    wait_xpath='//a[contains(@class,"c-card-vacancy__link")]',
+                    wait_xpath='//a[contains(@class,"c-vacancy-grid-card")]',
                     debug_label=f"list_{term.replace(' ', '_')}_{attempt}",
                 )
                 break
@@ -255,7 +255,6 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
                 if attempt == MAX_RETRIES_REQUEST:
                     log("❌ Pagina overgeslagen na meerdere pogingen.")
                     continue
-
         vacancies = get_vacancy_links(driver)
         log(f"     Vacatures op deze pagina: {len(vacancies)}")
 
