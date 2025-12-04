@@ -1,5 +1,5 @@
 # %%
-JSON_FILE = r'C:\Users\WinnieYapVeneficus\OneDrive - Veneficus B.V\yaw\Projecten\VacatureOverzicht\Circle8\circle8.json'
+JSON_FILE = r'./circle8.json'
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
