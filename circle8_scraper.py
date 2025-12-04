@@ -78,9 +78,8 @@ def list_pagination_links(driver):
 def list_vacancy_links(driver):
     """Get all vacancy links on current page."""
     # Robust selector for all Circle8 designs
-    safe_get(driver, driver.current_url, wait_xpath='//a[contains(@href, "/opdracht")]')
-
-    elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/opdracht")]')
+    safe_get(driver, driver.current_url, wait_xpath='//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
+    elements = driver.find_elements(By.XPATH, '//div[@class="c-vacancy-list"]//a[starts-with(@href, "/opdracht")]')
     return list({e.get_attribute("href") for e in elements if e.get_attribute("href")})
 
 
