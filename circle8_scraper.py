@@ -229,7 +229,7 @@ def scrape_search_term(driver, term: str) -> pd.DataFrame:
     safe_get(
         driver,
         search_url,
-        wait_xpath='//a[contains(@class,"c-card-vacancy__link")]',
+        wait_xpath='//a[contains(@class,"c-vacancy-grid-card")]',
         debug_label=f"search_{term.replace(' ', '_')}",
     )
 
