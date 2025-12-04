@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r scraper/requirements.txt
+          pip install -r requirements.txt
 
       - name: Load environment variables from GitHub Secrets
         run: echo "$MY_ENV" > .env
