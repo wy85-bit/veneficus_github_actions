@@ -1,12 +1,6 @@
 name: Scrape Circle8
-
-on:
-  schedule:
-    - cron: "0 6 * * *"   # elke dag om 06:00 (pas aan naar wens)
+on: 
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   scrape:
@@ -15,46 +9,35 @@ jobs:
       PROXY: ${{ secrets.PROXY }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Google Chrome Stable
+      - name: Install Chrome
         run: |
           wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
-          which google-chrome
-          google-chrome --version
 
-      - name: Remove any system Chromium to avoid version conflicts
+      - name: Remove Chromium
         run: |
-          sudo apt-get purge -y chromium-browser chromium-driver chromium snapd || true
-          sudo rm -f /usr/bin/chromium || true
-          sudo rm -f /usr/bin/chromium-browser || true
-          sudo rm -f /snap/bin/chromium || true
+          sudo apt purge -y chromium-browser chromium-driver chromium || true
+          sudo rm -f /usr/bin/chromium /usr/bin/chromium-browser || true
 
       - name: Setup Python
         uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        with: { python-version: "3.11" }
 
-      - name: Install Python dependencies
+      - name: Install deps
         run: |
-          pip install --upgrade pip
-          pip install undetected-chromedriver selenium pandas python-dotenv
+          pip install undetected-chromedriver selenium pandas
 
-      - name: Run Circle8 scraper (via Xvfb, non-headless browser)
-        run: |
-          xvfb-run -a python circle8_scraper.py
+      - name: Run scraper
+        run: xvfb-run -a python circle8_scraper.py
 
-      - name: Commit updated JSON (if changed)
+      - name: Commit JSON
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions@github.com"
           if ! git diff --quiet circle8.json; then
-            echo "Changes detected in circle8.json, committing..."
             git add circle8.json
-            git commit -m "Update Circle8 data [skip ci]"
+            git commit -m "Update data"
             git push
-          else
-            echo "No changes in circle8.json"
           fi
