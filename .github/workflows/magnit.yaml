@@ -29,7 +29,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run scraper
-        run: python magnit_scraper.py
+        run: python magnit_global_scraper.py
         env:
           MAGNIT_EMAIL: ${{ secrets.MAGNIT_EMAIL }}
           MAGNIT_PASSWORD: ${{ secrets.MAGNIT_PASSWORD }}
