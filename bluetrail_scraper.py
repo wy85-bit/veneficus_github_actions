@@ -1,151 +1,149 @@
-# %%
-import pandas as pd
+import os
 import time
+import pandas as pd
 import undetected_chromedriver as uc
 from datetime import datetime
-from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
+from dotenv import load_dotenv
 
-#%%
+# Load GitHub Actions secrets as environment variables
+load_dotenv()
+
 OUTPUT_FILE = f"bluetrail_{datetime.now().strftime('%Y-%m-%d')}.json"
 
-load_dotenv()
-# %%
+
 def go_to_page(driver, page_nr):
-    driver.get('https://www.bluetrail.nl/opdrachten/page/{}/?srch=data'.format(page_nr+1))
-    driver.set_window_size(1920, 1080)
-    driver.maximize_window()
-    return 'https://www.bluetrail.nl/opdrachten/page/{}/?srch=data'.format(page_nr+1)
+    url = f'https://www.bluetrail.nl/opdrachten/page/{page_nr + 1}/?srch=data'
+    driver.get(url)
+    return url
 
 
-def go_to_page_search_term_machine_learning(driver, page_nr):
-    driver.get('https://www.bluetrail.nl/opdrachten/?s=machine+learning')
-    return 'https://www.bluetrail.nl/opdrachten/?s=machine+learning'
+def go_to_page_search_term_machine_learning(driver):
+    url = 'https://www.bluetrail.nl/opdrachten/?s=machine+learning'
+    driver.get(url)
+    return url
 
-# %%
+
 def list_vacancy_links(driver):
-    elements = driver.find_elements(By.CLASS_NAME, "u-job-card")
-    links = [element.get_attribute("href") for element in elements]
-    return links
+    time.sleep(2)
+    elements = driver.find_elements(By.CSS_SELECTOR, "a.u-job-card")
+    return [element.get_attribute("href") for element in elements]
 
-def scrape_pages(driver, page):
-            print(page)
-            driver.get(page)
-            time.sleep(5)
-            list_rows = []
-            for vacancy in list_vacancy_links(driver):
-                    driver.get(vacancy)
-                    time.sleep(2)
 
-                    title = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[2]/div/div/div/div[1]/div/div/div[1]/div[2]/h1/span').text
+def scrape_pages(driver, page_url):
+    print("Scraping:", page_url)
+    driver.get(page_url)
+    time.sleep(4)
 
-                    try:           
-                        show_more_button = driver.find_element(By.XPATH, "/html/body/div[2]/div[2]/div[3]/div/div/div[1]/article/div/a")
-                        driver.execute_script("arguments[0].scrollIntoView();", show_more_button)
-                        driver.execute_script("scrollBy(0,-100)")
-                        show_more_button.click()
-                    except:
-                        pass
-                    UID = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[2]/div/div/div/div/div[2]/p/span[2]').text
-                    plaats = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[2]/div/div/div/div/div[2]/p/span[3]').text
+    rows = []
+    links = list_vacancy_links(driver)
 
-                    duur = driver.find_element(By.XPATH, '//*[@id="content"]/div[2]/div/div/div/div[1]/div/div/div[1]/div[3]/span[3]').text
-                    uren = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[2]/div/div/div/div/div[2]/p/span[7]').text
-                    start = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[2]/div/div/div/div/div[2]/p/span[4]').text
-                    
-                    eind = driver.find_element(By.XPATH, '//*[@id="text-4"]/div/div/div[2]/p/span[5]').text
-                    deadline = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[2]/div/div/div/div/div[2]/p/span[9]').text
-                    
-                    vacature_text=driver.find_element(By.XPATH, '//div[h3]')
-                    vacature_text_elements = vacature_text.text
-                    try:
-                        vacature_text_elements = vacature_text_elements + driver.find_element(By.XPATH, '//div[h3[text()="Functieomschrijving"]]').text
-                    except:
-                         pass
-                    try:
-                        vacature_text_elements = vacature_text_elements + driver.find_element(By.XPATH, '//div[h3[text()="Functieomschrijving"]]/ul').text
-                    except:
-                        vacature_text_elements  = vacature_text_elements
-                    
-                    eisen_elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[1]/article/div/div[4]/div/div/ul[1]/li')
-                    # eisen _elements = driver.find_elements(By.XPATH, '//div[h3[text()="Eisen:"]]/ul//li')
-                    eisen = [element.text for element in eisen_elements]
+    for vacancy in links:
+        driver.get(vacancy)
+        time.sleep(2)
 
-                    wensen_elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[1]/article/div/div[4]/div/div/ul[2]/li')
-                    wensen = [element.text for element in wensen_elements]
+        try:
+            title = driver.find_element(By.CSS_SELECTOR, "h1 span").text
+        except:
+            title = ""
 
-                    competenties_elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[1]/article/div/div[4]/div/div/ul[3]/li')
-                    competenties = [element.text for element in competenties_elements]
-                    if competenties == []:
-                        try:
-                            competenties.append(driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/div[3]/div/div/div[1]/article/div/div[4]/div/div/span').text)
-                        except:
-                            competenties=competenties
+        # Try expanding "show more"
+        try:
+            show_more_button = driver.find_element(By.XPATH, "//article//a[contains(@class, 'show-more')]")
+            driver.execute_script("arguments[0].click();", show_more_button)
+            time.sleep(1)
+        except:
+            pass
 
-                    row = {
-                        "UID": UID,
-                        "Referentie-nr": UID,
-                        "titel": title,
-                        "plaats": plaats,
-                        "uren": uren, 
-                        "text":vacature_text_elements,
-                        "start": start,
-                        "eind": eind,
-                        "duur": duur,
-                        "deadline": deadline,
-                        "eisen": eisen,
-                        "wensen": wensen,
-                        "competenties": competenties
-                    }
-                    list_rows.append(row)
-                    time.sleep(5)
-            return list_rows
+        # Extracting fields (with fallback)
+        def safe_xpath(xpath):
+            try:
+                return driver.find_element(By.XPATH, xpath).text
+            except:
+                return ""
 
-# %%
+        UID = safe_xpath("(//p/span)[2]")
+        plaats = safe_xpath("(//p/span)[3]")
+        start = safe_xpath("(//p/span)[4]")
+        uren = safe_xpath("(//p/span)[7]")
+        deadline = safe_xpath("(//p/span)[9]")
+        duur = safe_xpath("//*[@id='content']//span[3]")
+        eind = safe_xpath("(//*[@id='text-4']//span)[5]")
+
+        # Full text scraping
+        try:
+            vacature_text = driver.find_element(By.XPATH, "//div[h3]").text
+        except:
+            vacature_text = ""
+
+        # Lists
+        def list_elements(xpath):
+            try:
+                return [e.text for e in driver.find_elements(By.XPATH, xpath)]
+            except:
+                return []
+
+        eisen = list_elements("//article/div//ul[1]/li")
+        wensen = list_elements("//article/div//ul[2]/li")
+        competenties = list_elements("//article/div//ul[3]/li")
+
+        row = {
+            "UID": UID,
+            "Referentie-nr": UID,
+            "titel": title,
+            "plaats": plaats,
+            "uren": uren,
+            "text": vacature_text,
+            "start": start,
+            "eind": eind,
+            "duur": duur,
+            "deadline": deadline,
+            "eisen": eisen,
+            "wensen": wensen,
+            "competenties": competenties
+        }
+
+        rows.append(row)
+        time.sleep(1)
+
+    return rows
+
+
 def main():
-    path_to_json_file = JSON_FILE
-    with uc.Chrome(headless=False, use_subprocess=False) as driver:
-        data_search_term_data_total = []
-        machine_learning_search_term_data_total = []
-        for i in range(5):
-            go_to_page(driver,i)
-            page = go_to_page(driver,i)
-            data_search_term_data = scrape_pages(driver, page)
-            data_search_term_data_total.append(data_search_term_data)
-        for i in range(2):
-            page_search_term_machine_learning = go_to_page_search_term_machine_learning(driver,i)
-            driver.get(page_search_term_machine_learning)
-            time.sleep(5)
-            machine_learning_search_term_data = scrape_pages(driver, page_search_term_machine_learning)
-            machine_learning_search_term_data_total.append(machine_learning_search_term_data)
+    print("Starting BlueTrail scraper...")
 
-    data_search_term_data_total.append(machine_learning_search_term_data_total)
-    new_df = pd.DataFrame()
-    for j in range(len(data_search_term_data_total)):
-        new_df = pd.concat([new_df, pd.DataFrame(data_search_term_data_total[j])])
-    
-    new_df.set_index('UID')
-    
-    print(new_df)
-    df = new_df.drop_duplicates('UID').set_index('UID')
-    df=df.loc[:,['Referentie-nr',
-                 'titel',
-                 'plaats',
-                 'uren',
-                 'text',
-                 'start',
-                 'eind', 
-                 'duur',     
-                 'deadline',         
-                 'eisen',
-                 'wensen',  
-                 'competenties']]
-    
+    options = uc.ChromeOptions()
+    options.headless = True
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    driver = uc.Chrome(options=options)
+
+    all_data = []
+
+    # First: pages with search term "data"
+    for i in range(5):
+        page_url = go_to_page(driver, i)
+        all_data.extend(scrape_pages(driver, page_url))
+
+    # Second: machine learning page
+    ml_url = go_to_page_search_term_machine_learning(driver)
+    all_data.extend(scrape_pages(driver, ml_url))
+
+    driver.quit()
+
+    # Create dataframe
+    df = pd.DataFrame(all_data)
+    df = df.drop_duplicates("UID").set_index("UID")
+
+    df = df[
+        ["Referentie-nr", "titel", "plaats", "uren", "text",
+         "start", "eind", "duur", "deadline", "eisen", "wensen", "competenties"]
+    ]
+
     df.to_json(OUTPUT_FILE, orient="index", indent=4)
     print("Saved JSON:", OUTPUT_FILE)
-    
-if __name__ == "__main__":
-        import multiprocessing
-        multiprocessing.freeze_support()
-        main()
 
+
+if __name__ == "__main__":
+    main()
