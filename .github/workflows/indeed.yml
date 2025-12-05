@@ -66,14 +66,14 @@ jobs:
           pwd
           python indeed_scraper.py
 
-      - name: Create test HTML (always)
-        run: echo "<h1>test</h1>" > test_debug.html
+      # - name: Create test HTML (always)
+      #   run: echo "<h1>test</h1>" > test_debug.html
 
-      - name: Upload ALL HTML files recursively
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug_html
-          path: "**/*.html"
+      # - name: Upload ALL HTML files recursively
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: debug_html
+      #     path: "**/*.html"
       - name: Find scraper
         run: |
           echo "Searching for scraper file..."
