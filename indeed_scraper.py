@@ -1,12 +1,11 @@
 import json
 import time
 import random
-import pandas as pd
 from datetime import datetime
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -15,113 +14,155 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 
 # ---------------------------------------------------------
-# GitHub Actions Compatible Chrome Driver
+# Create Chrome with Anti-Bot Bypass (GitHub Actions SAFE)
 # ---------------------------------------------------------
 def get_driver():
     options = Options()
+
+    # Normal headless mode triggers bot detection → use new headless mode
     options.add_argument("--headless=new")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--no-sandbox")
+
+    # Anti-bot fingerprints
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+
+    # Realistic viewport
     options.add_argument("--window-size=1920,1080")
+
+    # Required in GitHub Actions
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
-        options=options
+        options=options,
     )
+
+    # Remove Selenium fingerprints
+    driver.execute_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    )
+
     return driver
 
 
 # ---------------------------------------------------------
-# Scraper Logic
+# Scrape results for 1 search query
 # ---------------------------------------------------------
 def scrape(driver):
     jobs = []
     pages_scraped = 0
-    pages_to_scrape = 20  # reduce for GitHub Actions stability
+    pages_to_scrape = 10  # safe limit for GitHub Actions
 
     while pages_scraped < pages_to_scrape:
 
-        time.sleep(random.uniform(1, 3))
+        time.sleep(random.uniform(2, 5))
 
-        try:
-            job_cards = driver.find_elements(By.CSS_SELECTOR, ".cardOutline")
-        except:
-            job_cards = []
+        job_cards = driver.find_elements(By.CSS_SELECTOR, ".cardOutline")
+
+        if not job_cards:
+            print("⚠ No job cards on this page → saving debug page...")
+            html = driver.page_source
+            with open("debug_page.html", "w", encoding="utf-8") as f:
+                f.write(html)
+            return jobs
 
         for job_card in job_cards:
             job = {
                 "title": None,
-                "company_name": None,
-                "company_rating": None,
+                "company": None,
+                "rating": None,
                 "location": None,
-                "apply_link": None,
                 "pay": None,
-                "job_type": None,
-                "description": None
+                "description": None,
+                "types": [],
             }
 
             driver.execute_script("arguments[0].scrollIntoView();", job_card)
             time.sleep(0.5)
 
-            # ---- Load job details ----
             try:
                 job_card.click()
             except:
                 continue
 
+            # ---- Title ----
             try:
-                title_el = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".jobsearch-JobInfoHeader-title"))
+                title_el = WebDriverWait(driver, 6).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, ".jobsearch-JobInfoHeader-title")
+                    )
                 )
-                job["title"] = title_el.text
+                job["title"] = title_el.text.strip()
             except:
                 continue
 
-            # Extract details
+            # ---- Details container ----
             try:
                 details = driver.find_element(By.CSS_SELECTOR, ".jobsearch-RightPane")
             except:
                 continue
 
+            # ---- Company name ----
             try:
-                job["company_name"] = details.find_element(
-                    By.CSS_SELECTOR,
-                    "div[data-company-name='true']"
+                job["company"] = details.find_element(
+                    By.CSS_SELECTOR, "div[data-company-name='true']"
                 ).text
             except:
                 pass
 
+            # ---- Rating ----
             try:
-                rating = details.find_element(
-                    By.XPATH,
-                    "//span[contains(@class,'css')]"
+                job["rating"] = details.find_element(
+                    By.XPATH, "//span[contains(@class,'css')]"
                 ).text
-                job["company_rating"] = rating
             except:
                 pass
 
+            # ---- Location ----
             try:
                 job["location"] = driver.find_element(By.ID, "jobLocationText").text
             except:
                 pass
 
+            # ---- Pay ----
             try:
-                job["pay"] = driver.find_element(By.CSS_SELECTOR, "#salaryInfoAndJobType span").text
+                job["pay"] = driver.find_element(
+                    By.CSS_SELECTOR, "#salaryInfoAndJobType span"
+                ).text
             except:
                 pass
 
+            # ---- Description ----
             try:
-                job["description"] = driver.find_element(By.ID, "jobDescriptionText").text
+                job["description"] = details.find_element(
+                    By.ID, "jobDescriptionText"
+                ).text
             except:
                 pass
+
+            # ---- Job types ----
+            for i in range(1, 5):
+                try:
+                    t = driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="jobDetailsSection"]/div/div[1]/div[2]/div[2]/div/div/ul/li[{i}]/button/div/div/div/span'
+                    ).text
+                    job["types"].append(t)
+                except:
+                    break
 
             jobs.append(job)
+
             time.sleep(random.uniform(1, 2))
 
-        # ---- Go to next page ----
+        # ---- Next page ----
         try:
-            next_button = driver.find_element(By.CSS_SELECTOR, "a[data-testid=pagination-page-next]")
-            next_button.click()
+            next_btn = driver.find_element(
+                By.CSS_SELECTOR, "a[data-testid='pagination-page-next']"
+            )
+            next_btn.click()
         except NoSuchElementException:
             break
 
@@ -136,37 +177,35 @@ def scrape(driver):
 def main():
     driver = get_driver()
 
-    results = []
+    search_urls = {
+        "data": "https://nl.indeed.com/jobs?q=Data&l=Nederland&fromage=3",
+        "machine_learning": "https://nl.indeed.com/jobs?q=machine+learning+engineer&fromage=3",
+        "data_analyst": "https://nl.indeed.com/jobs?q=data+analyst&fromage=3",
+    }
 
-    searches = [
-        "https://nl.indeed.com/jobs?q=Data&l=Nederland&fromage=3",
-        "https://nl.indeed.com/jobs?q=machine+learning+engineer&fromage=3",
-        "https://nl.indeed.com/jobs?q=data+analyst&fromage=3"
-    ]
+    all_jobs = []
 
-    for url in searches:
-        print("Scraping:", url)
+    for name, url in search_urls.items():
+        print(f"🔎 Scraping: {name} → {url}")
         driver.get(url)
-        time.sleep(3)
-        results.extend(scrape(driver))
+        time.sleep(4)
+
+        jobs = scrape(driver)
+        all_jobs.extend(jobs)
 
     driver.quit()
 
     output = {
-        "date": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "jobs": results
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "jobs": all_jobs,
     }
-    import os
-    
-    root = os.getcwd()  # dit is altijd de repo root in GitHub Actions
-    filename = os.path.join(root, f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json")
 
-    # filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
+    filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
 
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=4)
 
-    print("Saved:", filename)
+    print("📁 Saved:", filename)
 
 
 if __name__ == "__main__":
