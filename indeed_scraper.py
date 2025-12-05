@@ -48,13 +48,13 @@ def get_driver():
 # ---------------------------------------------------------
 # Write debug HTML ALWAYS
 # ---------------------------------------------------------
+import os
+
 def save_debug(driver, name):
-    try:
-        with open(f"{name}.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        print(f"📝 Saved debug: {name}.html")
-    except Exception as e:
-        print("Could not write debug HTML:", str(e))
+    path = os.path.join(os.getcwd(), f"{name}.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    print(f"📝 Debug saved at {path}")
 
 
 # ---------------------------------------------------------
