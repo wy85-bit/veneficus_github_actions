@@ -1,9 +1,9 @@
 name: Striive Scraper
 
 on:
-  workflow_dispatch:      # Allow manual trigger
+  workflow_dispatch:
   schedule:
-    - cron: "0 6 * * *"   # Runs every day at 06:00 UTC
+    - cron: "0 6 * * *"
 
 jobs:
   scrape:
@@ -43,4 +43,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: striive-data
-          path: striive_*.j*_
+          path: output/*.json
