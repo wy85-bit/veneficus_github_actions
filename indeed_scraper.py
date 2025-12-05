@@ -12,7 +12,14 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
+# DEBUG: sla volledige pagina op zodat we kunnen zien wat Indeed teruggeeft
+def save_debug_page(driver, label="debug"):
+    html = driver.page_source
+    with open(f"{label}.html", "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"🔍 Saved {label}.html for inspection")
 
+    
 # ---------------------------------------------------------
 # Create Chrome with Anti-Bot Bypass (GitHub Actions SAFE)
 # ---------------------------------------------------------
@@ -189,7 +196,7 @@ def main():
         print(f"🔎 Scraping: {name} → {url}")
         driver.get(url)
         time.sleep(4)
-
+        save_debug_page(driver, "loaded_page")
         jobs = scrape(driver)
         all_jobs.extend(jobs)
 
