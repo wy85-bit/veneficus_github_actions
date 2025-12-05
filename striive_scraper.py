@@ -3,28 +3,24 @@ import time
 import pandas as pd
 from datetime import datetime
 
-# Selenium imports
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
-
-# Auto-install correct ChromeDriver
 import chromedriver_autoinstaller
 
 
 # ============================================================
-#  FILE OUTPUT (root folder)
+# Save output in repository root
 # ============================================================
-OUTPUT_DIR = "."  # save directly to repo root
+OUTPUT_DIR = "."
 
 
 # ============================================================
-#  DRIVER SETUP
+# Chrome driver setup
 # ============================================================
 def get_driver():
-    """Creates a GitHub-Actions-compatible Chrome driver."""
     chromedriver_autoinstaller.install()
 
     options = Options()
@@ -37,7 +33,7 @@ def get_driver():
 
 
 # ============================================================
-#  LOGIN PROCESS
+# Login sequence
 # ============================================================
 def login(driver):
     wait = WebDriverWait(driver, 30)
@@ -52,12 +48,11 @@ def login(driver):
     email_input.send_keys(os.getenv("STRIIVE_EMAIL"))
     password_input.send_keys(os.getenv("STRIIVE_PASSWORD"))
 
-    login_button = wait.until(
+    login_btn = wait.until(
         EC.element_to_be_clickable((By.XPATH, "//form/button"))
     )
-    login_button.click()
+    login_btn.click()
 
-    # Wait until job inbox loads
     wait.until(
         EC.presence_of_element_located((By.TAG_NAME, "app-job-request-inbox"))
     )
@@ -65,10 +60,10 @@ def login(driver):
 
 
 def go_to_page(driver):
-    url = "https://supplier.striive.com/inbox/all?searchTerm=data"
+    url = "https://supplier.striive.com/inbox/all"
     driver.get(url)
 
-    WebDriverWait(driver, 30).until(
+    WebDriverWait(driver, 25).until(
         EC.presence_of_element_located((By.TAG_NAME, "app-login"))
     )
 
@@ -77,60 +72,87 @@ def go_to_page(driver):
 
 
 # ============================================================
-#  SCRAPING HELPERS
+# Helpers
 # ============================================================
-def safe_get_text(driver, xpath):
-    """Returns element text or '' if not found."""
-    try:
-        return driver.find_element(By.XPATH, xpath).text
-    except:
-        return ""
-
-
-def get_demands(driver):
-    items = []
-    for i in range(1, 25):
-        txt = safe_get_text(driver, f"(//section[3]//ul)[1]/li[{i}]")
-        if txt:
-            items.append(txt)
-    return items
-
-
-def get_wishes(driver):
-    items = []
-    for i in range(1, 25):
-        txt = safe_get_text(driver, f"(//section[3]//ul)[2]/li[{i}]//span/span")
-        if txt:
-            items.append(txt)
-    return items
-
-
-def extract_text(driver):
-    return (
-        safe_get_text(driver, "//section[4]/p")
-        or safe_get_text(driver, "//section[5]/p")
-    )
+def safe_text(el):
+    return el.text.strip() if el else ""
 
 
 def extract_job(driver, uid):
-    """Extracts structured job data."""
+    """Extract structured job data from the details panel."""
+
+    def t(xpath):
+        try:
+            return driver.find_element(By.XPATH, xpath).text.strip()
+        except:
+            return ""
+
     return {
         "UID": uid,
-        "referentie_code": safe_get_text(driver, '(//span[@class="field-value"])[7]'),
-        "vacature": safe_get_text(driver, '//header//div/div[2]'),
-        "plaats": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[2]'),
-        "uren": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[1]'),
-        "text": extract_text(driver),
-        "start": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[3]') if c.isdigit() or c == "-"),
-        "eind": safe_get_text(driver, '(//span[@class="field-value"])[3]'),
-        "deadline": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[4]') if c.isdigit() or c == "-"),
-        "eisen": get_demands(driver),
-        "wensen": get_wishes(driver),
+        "referentie_code": t('(//span[@class="field-value"])[7]'),
+        "vacature": t('//header//div/div[2]'),
+        "plaats": t('(//section[2]//span[@class="field-value"])[2]'),
+        "uren": t('(//section[2]//span[@class="field-value"])[1]'),
+        "text": t('//section[4]/p') or t('//section[5]/p'),
+        "start": "".join(c for c in t('(//section[2]//span[@class="field-value"])[3]') if c.isdigit() or c == "-"),
+        "eind": t('(//span[@class="field-value"])[3]'),
+        "deadline": "".join(c for c in t('(//section[2]//span[@class="field-value"])[4]') if c.isdigit() or c == "-"),
+        "eisen": extract_list(driver, "(//section[3]//ul)[1]/li"),
+        "wensen": extract_list(driver, "(//section[3]//ul)[2]/li//span/span"),
     }
 
 
+def extract_list(driver, base_xpath):
+    items = []
+    for i in range(1, 30):
+        try:
+            txt = driver.find_element(By.XPATH, f"{base_xpath}[{i}]").text.strip()
+            if txt:
+                items.append(txt)
+        except:
+            break
+    return items
+
+
 # ============================================================
-#  MAIN SCRAPER
+# Infinite scroll logic for job list
+# ============================================================
+def load_all_job_items(driver):
+    """Scrolls until ALL jobs are loaded, returns list of elements."""
+
+    wait = WebDriverWait(driver, 20)
+
+    # Locate the scroll container
+    scroller = wait.until(
+        EC.presence_of_element_located((
+            By.CSS_SELECTOR, "app-job-request-list div.p-scroller"
+        ))
+    )
+
+    previous_count = -1
+
+    while True:
+        items = driver.find_elements(By.CSS_SELECTOR, "app-job-request-list-item")
+        count = len(items)
+
+        if count == previous_count:
+            # No more new items loaded
+            break
+
+        previous_count = count
+
+        # Scroll to bottom of the container
+        driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollHeight;",
+            scroller
+        )
+        time.sleep(1)
+
+    return driver.find_elements(By.CSS_SELECTOR, "app-job-request-list-item")
+
+
+# ============================================================
+# Main scraper
 # ============================================================
 def main():
     output_file = os.path.join(
@@ -145,57 +167,45 @@ def main():
         go_to_page(driver)
         wait = WebDriverWait(driver, 20)
 
-        # Wait for list
         wait.until(
             EC.presence_of_element_located((By.TAG_NAME, "app-job-request-list"))
         )
 
-        # Scrape first 4 visible jobs
-        for idx in range(1, 5):
+        print("📌 Loading all jobs via infinite scroll...")
+        job_items = load_all_job_items(driver)
+
+        print(f"📌 Total jobs loaded: {len(job_items)}")
+
+        for item in job_items:
             try:
-                item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
                 driver.execute_script("arguments[0].scrollIntoView();", item)
                 item.click()
                 time.sleep(1)
 
-                rows.append(extract_job(driver, uid))
+                row = extract_job(driver, uid)
+                rows.append(row)
                 uid += 1
-            except:
+
+            except Exception as e:
+                print("Error scraping job:", e)
                 continue
 
-        # Scroll to next pages and scrape
-        for _ in range(10):
-            for idx in range(5, 10):
-                try:
-                    item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
-                    driver.execute_script("arguments[0].scrollIntoView();", item)
-                    item.click()
-                    time.sleep(1)
-
-                    rows.append(extract_job(driver, uid))
-                    uid += 1
-                except:
-                    continue
-
-    # Build dataframe & ensure uniqueness
+    # Build dataframe and remove duplicates by reference code
     df = pd.DataFrame(rows).drop_duplicates(subset=["referentie_code"])
 
-    # Log file path
-    abs_path = os.path.abspath(output_file)
-    print(f"Saving JSON to: {abs_path}")
+    absfile = os.path.abspath(output_file)
+    print("💾 Saving JSON to:", absfile)
 
-    # Save JSON
     df.to_json(output_file, orient="index", indent=4)
 
-    # Check if file exists
     if os.path.exists(output_file):
-        print("✔ File successfully created:", abs_path)
+        print("✅ File successfully created:", absfile)
     else:
-        print("❌ ERROR: File was NOT created:", abs_path)
+        print("❌ ERROR: file not created:", absfile)
 
 
 # ============================================================
-#  ENTRY POINT
+# Entry point
 # ============================================================
 if __name__ == "__main__":
     main()
