@@ -78,11 +78,11 @@ jobs:
         run: |
           echo "Searching for scraper file..."
           find . -name "indeed_scraper.py" -maxdepth 5
-      - name: Upload ALL HTML debug files recursively
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug_html
-          path: "**/*.html"
+      # - name: Upload ALL HTML debug files recursively
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: debug_html
+      #     path: "**/*.html"
 
       - name: Commit JSON files
         run: |
