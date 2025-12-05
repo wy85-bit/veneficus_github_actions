@@ -28,8 +28,13 @@ jobs:
       - name: Run scraper
         run: python indeed_scraper.py
 
-      - name: Upload debug page (if exists)
+      - name: Upload ALL HTML debug files
         uses: actions/upload-artifact@v4
+        with:
+          name: debug_html
+          path: "*.html"
+        continue-on-error: true
+
         with:
           name: debug_html
           path: debug_page.html
