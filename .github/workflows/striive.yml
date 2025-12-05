@@ -1,0 +1,37 @@
+name: Striive Scraper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"   # Elke dag om 06:00
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          STRIIVE_EMAIL: ${{ secrets.STRIIVE_EMAIL }}
+          STRIIVE_PASSWORD: ${{ secrets.STRIIVE_PASSWORD }}
+        run: |
+          python striive_scraper.py
+
+      - name: Upload JSON result
+        uses: actions/upload-artifact@v4
+        with:
+          name: striive-output
+          path: striive_*.json
