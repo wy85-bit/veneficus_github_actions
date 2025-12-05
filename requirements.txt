@@ -5,4 +5,4 @@ distutils-pytest
 pandas
 dotenv
 undetected-chromedriver
-chromedriver-autoinstaller==0.6.4
+chromedriver-autoinstaller
