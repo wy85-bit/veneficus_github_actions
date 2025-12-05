@@ -15,17 +15,16 @@ import chromedriver_autoinstaller
 
 
 # ============================================================
-#  OUTPUT DIRECTORY (ALWAYS EXISTS)
+#  FILE OUTPUT (root folder)
 # ============================================================
-OUTPUT_DIR = "output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_DIR = "."  # save directly to repo root
 
 
 # ============================================================
 #  DRIVER SETUP
 # ============================================================
 def get_driver():
-    """Configures a Chrome driver compatible with GitHub Actions."""
+    """Creates a GitHub-Actions-compatible Chrome driver."""
     chromedriver_autoinstaller.install()
 
     options = Options()
@@ -34,8 +33,7 @@ def get_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
 
-    driver = webdriver.Chrome(options=options)
-    return driver
+    return webdriver.Chrome(options=options)
 
 
 # ============================================================
@@ -44,7 +42,6 @@ def get_driver():
 def login(driver):
     wait = WebDriverWait(driver, 30)
 
-    # Wait until login form is rendered by Angular
     email_input = wait.until(
         EC.visibility_of_element_located((By.ID, "email"))
     )
@@ -60,7 +57,7 @@ def login(driver):
     )
     login_button.click()
 
-    # Wait for job inbox to appear
+    # Wait until job inbox loads
     wait.until(
         EC.presence_of_element_located((By.TAG_NAME, "app-job-request-inbox"))
     )
@@ -71,8 +68,7 @@ def go_to_page(driver):
     url = "https://supplier.striive.com/inbox/all?searchTerm=data"
     driver.get(url)
 
-    # Wait until the Angular login component loads
-    WebDriverWait(driver, 25).until(
+    WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, "app-login"))
     )
 
@@ -84,7 +80,7 @@ def go_to_page(driver):
 #  SCRAPING HELPERS
 # ============================================================
 def safe_get_text(driver, xpath):
-    """Return text if found, otherwise empty string."""
+    """Returns element text or '' if not found."""
     try:
         return driver.find_element(By.XPATH, xpath).text
     except:
@@ -110,7 +106,6 @@ def get_wishes(driver):
 
 
 def extract_text(driver):
-    """Dynamic description location handling."""
     return (
         safe_get_text(driver, "//section[4]/p")
         or safe_get_text(driver, "//section[5]/p")
@@ -118,7 +113,7 @@ def extract_text(driver):
 
 
 def extract_job(driver, uid):
-    """Collects all structured job data fields."""
+    """Extracts structured job data."""
     return {
         "UID": uid,
         "referentie_code": safe_get_text(driver, '(//span[@class="field-value"])[7]'),
@@ -148,14 +143,14 @@ def main():
 
     with get_driver() as driver:
         go_to_page(driver)
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 20)
 
-        # Wait for the job list
+        # Wait for list
         wait.until(
             EC.presence_of_element_located((By.TAG_NAME, "app-job-request-list"))
         )
 
-        # Scrape visible list items
+        # Scrape first 4 visible jobs
         for idx in range(1, 5):
             try:
                 item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
@@ -168,7 +163,7 @@ def main():
             except:
                 continue
 
-        # Scroll & scrape next lists
+        # Scroll to next pages and scrape
         for _ in range(10):
             for idx in range(5, 10):
                 try:
@@ -182,20 +177,21 @@ def main():
                 except:
                     continue
 
-    # Convert to DataFrame
+    # Build dataframe & ensure uniqueness
     df = pd.DataFrame(rows).drop_duplicates(subset=["referentie_code"])
 
-    # DEBUG: Show save path
-    print("Saving JSON to:", os.path.abspath(output_file))
+    # Log file path
+    abs_path = os.path.abspath(output_file)
+    print(f"Saving JSON to: {abs_path}")
 
-    # Write file
+    # Save JSON
     df.to_json(output_file, orient="index", indent=4)
 
-    # Confirm file existence
+    # Check if file exists
     if os.path.exists(output_file):
-        print("✔ FILE EXISTS:", os.path.abspath(output_file))
+        print("✔ File successfully created:", abs_path)
     else:
-        print("❌ ERROR: File not created:", os.path.abspath(output_file))
+        print("❌ ERROR: File was NOT created:", abs_path)
 
 
 # ============================================================
