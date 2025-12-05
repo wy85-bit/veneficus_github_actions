@@ -1,3 +1,5 @@
+import traceback
+
 import json
 import time
 import random
@@ -182,38 +184,54 @@ def scrape(driver):
 # Main
 # ---------------------------------------------------------
 def main():
-    driver = get_driver()
+    try:
+        driver = get_driver()
 
-    search_urls = {
-        "data": "https://nl.indeed.com/jobs?q=Data&l=Nederland&fromage=3",
-        "machine_learning": "https://nl.indeed.com/jobs?q=machine+learning+engineer&fromage=3",
-        "data_analyst": "https://nl.indeed.com/jobs?q=data+analyst&fromage=3",
-    }
+        search_urls = {
+            "data": "https://nl.indeed.com/jobs?q=Data&l=Nederland&fromage=3",
+            "machine_learning": "https://nl.indeed.com/jobs?q=machine+learning+engineer&fromage=3",
+            "data_analyst": "https://nl.indeed.com/jobs?q=data+analyst&fromage=3",
+        }
 
-    all_jobs = []
+        all_jobs = []
 
-    for name, url in search_urls.items():
-        print(f"🔎 Scraping: {name} → {url}")
-        driver.get(url)
-        time.sleep(4)
-        save_debug_page(driver, "loaded_page")
-        jobs = scrape(driver)
-        all_jobs.extend(jobs)
+        for name, url in search_urls.items():
+            print(f"🔎 Scraping: {name} → {url}")
+            driver.get(url)
+            time.sleep(4)
 
-    driver.quit()
+            # ALWAYS produce debug page
+            with open(f"debug_{name}.html", "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
 
-    output = {
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "jobs": all_jobs,
-    }
+            jobs = scrape(driver)
+            all_jobs.extend(jobs)
 
-    filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
+        driver.quit()
 
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=4)
+        output = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "jobs": all_jobs,
+        }
 
-    print("📁 Saved:", filename)
+        filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=4)
 
+        print("📁 Saved:", filename)
+
+    except Exception as e:
+        # Always save crash HTML
+        print("❌ ERROR OCCURRED:", str(e))
+        print(traceback.format_exc())
+
+        try:
+            with open("debug_crash.html", "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+        except:
+            pass
+
+        raise
 
 if __name__ == "__main__":
     main()
