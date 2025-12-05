@@ -34,11 +34,6 @@ jobs:
           name: debug_html
           path: "*.html"
         continue-on-error: true
-
-        with:
-          name: debug_html
-          path: debug_page.html
-        continue-on-error: true
       - name: Upload debug HTML
         uses: actions/upload-artifact@v4
         with:
