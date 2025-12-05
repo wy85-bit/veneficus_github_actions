@@ -28,12 +28,14 @@ jobs:
       - name: Run scraper
         run: python indeed_scraper.py
 
-      - name: Upload ALL HTML debug files
+      - name: Upload ALL HTML files recursively
         uses: actions/upload-artifact@v4
         with:
           name: debug_html
-          path: "*.html"
+          path: |
+            **/*.html
         continue-on-error: true
+
       - name: Upload debug HTML
         uses: actions/upload-artifact@v4
         with:
