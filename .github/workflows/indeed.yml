@@ -34,7 +34,12 @@ jobs:
           name: debug_html
           path: debug_page.html
         continue-on-error: true
-
+      - name: Upload debug HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug_pages
+          path: "*.html"
+        continue-on-error: true
       - name: Commit JSON file(s)
         run: |
           git config user.name "github-actions"
