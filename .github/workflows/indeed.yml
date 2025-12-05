@@ -57,8 +57,14 @@ jobs:
       - name: Install requirements
         run: pip install -r requirements.txt
 
-      - name: Run scraper
-        run: python indeed_scraper.py
+      - name: Run scraper (auto-detected path)
+        run: |
+          SCRAPER=$(find . -name "indeed_scraper.py" -maxdepth 5 | head -n 1)
+          echo "Found scraper at: $SCRAPER"
+          cd $(dirname "$SCRAPER")
+          echo "Running from directory:"
+          pwd
+          python indeed_scraper.py
 
       - name: Create test HTML (always)
         run: echo "<h1>test</h1>" > test_debug.html
