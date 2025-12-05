@@ -84,3 +84,99 @@ def get_demands(driver):
         try:
             txt = safe_get_text(driver, f'(//section[3]//ul)[1]/li[{i}]')
             if txt:
+                items.append(txt)
+        except:
+            continue
+    return items
+
+
+def get_wishes(driver):
+    items = []
+    for i in range(1, 21):
+        try:
+            txt = safe_get_text(driver, f'(//section[3]//ul)[2]/li[{i}]//span/span')
+            if txt:
+                items.append(txt)
+        except:
+            continue
+    return items
+
+
+def extract_text(driver):
+    """Extract job description from dynamic section indexes."""
+    return safe_get_text(driver, "//section[4]/p") or safe_get_text(driver, "//section[5]/p")
+
+
+def extract_job(driver, uid):
+    """Return one job row as dict."""
+    return {
+        "UID": uid,
+        "referentie_code": safe_get_text(driver, '(//span[@class="field-value"])[7]'),
+        "vacature": safe_get_text(driver, '//header//div/div[2]'),
+        "plaats": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[2]'),
+        "uren": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[1]'),
+        "text": extract_text(driver),
+        "start": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[3]') if c.isdigit() or c == '-'),
+        "eind": safe_get_text(driver, '(//span[@class="field-value"])[3]'),
+        "deadline": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[4]') if c.isdigit() or c == '-'),
+        "eisen": get_demands(driver),
+        "wensen": get_wishes(driver),
+    }
+
+
+# ============================================================
+# MAIN SCRAPER
+# ============================================================
+def main():
+    output_file = f"striive_{datetime.now().strftime('%Y-%m-%d')}.json"
+
+    rows = []
+    uid = 0
+
+    with get_driver() as driver:
+        go_to_page(driver)
+
+        wait = WebDriverWait(driver, 20)
+
+        # Locate job list container
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "app-job-request-list")))
+
+        # Scrape first 4 items
+        for idx in range(1, 5):
+            try:
+                item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
+                driver.execute_script("arguments[0].scrollIntoView();", item)
+                item.click()
+                time.sleep(1)
+
+                rows.append(extract_job(driver, uid))
+                uid += 1
+            except:
+                continue
+
+        # Scrape next blocks of items (5–9) for several scroll cycles
+        for _ in range(10):
+            for idx in range(5, 10):
+                try:
+                    item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
+                    driver.execute_script("arguments[0].scrollIntoView();", item)
+                    item.click()
+                    time.sleep(1)
+
+                    rows.append(extract_job(driver, uid))
+                    uid += 1
+                except:
+                    continue
+
+    # Save to JSON
+    df = pd.DataFrame(rows).drop_duplicates(subset=["referentie_code"])
+    df.to_json(output_file, orient="index", indent=4)
+
+    print(f"Saved job data → {output_file}")
+
+
+# ============================================================
+# ENTRY
+# ============================================================
+if __name__ == "__main__":
+    main()
