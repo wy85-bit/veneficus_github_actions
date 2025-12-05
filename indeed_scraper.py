@@ -156,8 +156,12 @@ def main():
         "date": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "jobs": results
     }
+    import os
+    
+    root = os.getcwd()  # dit is altijd de repo root in GitHub Actions
+    filename = os.path.join(root, f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json")
 
-    filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
+    # filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
 
     with open(filename, "w") as f:
         json.dump(output, f, indent=4)
