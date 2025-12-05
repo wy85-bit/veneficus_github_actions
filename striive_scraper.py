@@ -29,22 +29,37 @@ def get_driver():
 # ============================================================
 #  LOGIN + NAVIGATION
 # ============================================================
-def login(driver):
-    time.sleep(2)
-    email = driver.find_element(By.ID, 'email')
-    email.send_keys(os.getenv("STRIIVE_EMAIL"))
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-    pw = driver.find_element(By.ID, 'password')
+def login(driver):
+    wait = WebDriverWait(driver, 20)
+
+    # Wait until the login form is rendered
+    email = wait.until(EC.visibility_of_element_located((By.ID, "email")))
+    pw = wait.until(EC.visibility_of_element_located((By.ID, "password")))
+
+    email.send_keys(os.getenv("STRIIVE_EMAIL"))
     pw.send_keys(os.getenv("STRIIVE_PASSWORD"))
 
-    button = driver.find_element(By.XPATH, '//form/button')
-    button.click()
-    time.sleep(2)
+    # Wait for login button
+    login_btn = wait.until(EC.element_to_be_clickable((By.XPATH, '//form/button')))
+    login_btn.click()
 
+    # Wait for inbox to load
+    wait.until(EC.presence_of_element_located((By.TAG_NAME, "app-job-request-inbox")))
+    time.sleep(1)
+    
 
 def go_to_page(driver):
     url = "https://supplier.striive.com/inbox/all?searchTerm=data"
     driver.get(url)
+
+    # Wait for Angular to bootstrap
+    WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.TAG_NAME, "app-login"))
+    )
+
     login(driver)
     return url
 
