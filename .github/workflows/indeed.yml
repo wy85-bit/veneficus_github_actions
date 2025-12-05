@@ -13,7 +13,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Detect working directory
+        id: finddir
+        run: |
+          echo "Searching for scraper file..."
+          SCRAPER=$(find . -maxdepth 5 -name "indeed_scraper.py" | head -n 1)
+          echo "FOUND=$SCRAPER" >> $GITHUB_OUTPUT
+          echo "Scraper found at: $SCRAPER"
+
+      - name: Fail if scraper not found
+        if: ${{ steps.finddir.outputs.FOUND == '' }}
+        run: |
+          echo "❌ indeed_scraper.py not found!"
+          exit 1
+
+      - name: Switch to correct folder
+        run: |
+          cd "$(dirname '${{ steps.finddir.outputs.FOUND }}')"
+          echo "Now in:"
+          pwd
+        shell: bash
 
       - uses: actions/setup-python@v4
         with:
@@ -22,35 +44,28 @@ jobs:
       - name: Install Chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Install dependencies
+      - name: Install requirements
         run: pip install -r requirements.txt
 
       - name: Run scraper
         run: python indeed_scraper.py
 
+      - name: Create test HTML (always)
+        run: echo "<h1>test</h1>" > test_debug.html
+
       - name: Upload ALL HTML files recursively
         uses: actions/upload-artifact@v4
         with:
           name: debug_html
-          path: |
-            **/*.html
-        continue-on-error: true
+          path: "**/*.html"
 
-      - name: Upload debug HTML
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug_pages
-          path: "*.html"
-        continue-on-error: true
-      - name: Commit JSON file(s)
+      - name: Commit JSON files
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           find . -name "indeed_*.json" -exec git add {} +
-
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No changes."
           else
             git commit -m "Indeed update $(date)"
             git push
