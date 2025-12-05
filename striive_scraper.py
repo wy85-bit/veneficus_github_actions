@@ -174,7 +174,12 @@ def main():
 
     print(f"Saved job data → {output_file}")
 
+    import os
 
+    if os.path.exists(output_file):
+        print("FILE EXISTS:", output_file)
+    else:
+        print("❌ ERROR: Output file was NOT created")
 # ============================================================
 # ENTRY
 # ============================================================
