@@ -1,0 +1,32 @@
+{
+    "0":{
+        "UID":0,
+        "referentie_code":"",
+        "vacature":"Data Steward HDO-EZK-RVO",
+        "plaats":"",
+        "uren":"",
+        "text":"Opdrachtomschrijving\nLet erop dat u voordat u een kandidaat aanbiedt de Aanbiedingsrichtlijnen doorneemt, gebruik maakt van het \u201cstandaard reactie formaat\u201d (downloadbaar tijdens aanbiedingsprocedure) en dat het aangeboden CV een Word-document is van maximaal 5 A4.\nDe aanbesteding EZ is (mede) gegund aan de combinatie Yellow Friday en Sogeti. De inleen van niet-eigen personeel geschiedt door Yellow Friday. De contractering (en dus ook het accountmanagement) geschiedt door Sogeti. Er is hier geen sprake van doorleen en tariefstapeling, omdat we naar EZ toe \u00e9\u00e9n aanbieder zijn\nOm de MT HDO ambitie rondom DGW in 2026 verder te realiseren is een Co\u00f6rdinerend Data Steward HDO benodigd in 2026. De Co\u00f6rdinerend Data Steward houdt zich bezig met:\nhaalt informatie op bij de onderliggende dataverantwoordelijken;\ninventariseert hun wensen met betrekking tot datagedreven werken;\nvoert periodiek een Data Maturity Scan uit om te toetsen in hoeverre deze wensen uitvoerbaar zijn op basis van de huidige datakwaliteit. Daarnaast faciliteert de co\u00f6rdinerend data steward de datastewards in het realiseren van de benodigde DGW stappen, bewaakt de naleving van het beleid en fungeert als verbindende schakel tussen beleid en uitvoering binnen HDO. Hi\/zijj werkt nauw samen met de adviseurs datamanagement, die hem ondersteunen en adviseren. Op basis van deze samenwerking begeleidt hij ook de onderliggende datastewards in hun domeinen. De co\u00f6rdinerend data steward kijkt domein overstijgend, rapporteert de verkregen inzichten aan HDO, en ondersteunt zo bij het maken van strategische keuzes in de datamanagementaanpak. Deze keuzes zijn gericht op het maximaliseren van impact op de opgaven en het toekomstbestendig inzetten van data. Prestatiedoelstellingen 2026:\nIn 2026 hebben alle HDO afdelingen, waar het voor nodig is, de domeinbeschrijvingen, BCM en Business Glossary ingericht.\nInzicht in beschikbare SLA\/GLO's per bedrijfsdomein, inclusief Security en privacy binnen HDO.\nInzicht in basis op orde voor geheel HDO.\nInzicht krijgen in de beschikbare databestanden binnen HDO, zodat er cross-afdeling analyses\/ rapportage gemaakt kunnen worden.\nAchtergrond opdracht\nAls Data steward denk je altijd in oplossingen, jij kijkt juist naar wat w\u00e9l mogelijk is. Natuurlijk houd je hierbij altijd de randvoorwaarden in het zicht en bewaak je eventuele issues en risico's. Het woord verbinden past bij jou. Zowel binnen de afdeling F&C maar juist ook over directies, afdelingen en teams heen. Jij weet mensen mee te krijgen. F&C is onderdeel van de Directie Financi\u00ebn, Informatiemanagement en Facilitaire zaken (FIFZ). Als Data steward heb jij hier een cruciale rol. Je bent het eerste aanspreekpunt voor kaders en richtlijnen t.a.v. data binnen deze Directie en bent verantwoordelijk voor het uitdragen en implementeren van veranderingen binnen data-gedreven werken. Hierin stem je af met de datamanagement adviseur van afdeling Data.\nEisen\nKennis van en ervaring met data governance en datamanagement  ( 5 jaar)\nKennis van en ervaring met relevante regel- en wetgeving (AVG, WOO, Archiefwet)  ( 5 jaar)\nKennis van en ervaring met DAMA DMBOK of een andere best practice ( 5 jaar)\nKennis van en ervaring met datamodellering, data lineage en datakwaliteitsbeheer (5 Jaar)\n\nWensen\nBasiskennis van ETL-processen en data-integratie\nErvaring met SQL, BI tooling (SAS VA, Power BI, OAS), Excel tooling\nErvaring in datamanagement- \/ datagovernance tooling\nCompetenties\nCommunicatieve vaardigheden zijn belangrijk om effectief met gebruikers, stakeholders en ontwikkelaars te overleggen.\nSamenwerken gaat hierbij hand in hand, omdat je met verschillende teams binnen de organisatie schakelt.\nDaarnaast is probleemoplossend vermogen en een proactieve houding in data gedreven werken en datamanagement nodig om tot praktiche oplossingen te komen.\nAanvullende Informatie\nDoorleen is niet toegestaan. Levering door Yellow Friday aan EZK geschiedt via Sogeti. Hier is geen sprake van ketenvorming\/doorleen, want Yellow Friday heeft de aanbesteding samen met Sogeti uitgevoerd en is formele onderaannemer.",
+        "start":"",
+        "eind":"",
+        "deadline":"",
+        "eisen":[
+            "ARCHIEF WET\n5 jaar",
+            "AVG\n5 jaar",
+            "DAMA\n5 jaar",
+            "data governance\n5 jaar",
+            "datakwaliteitsbeheer\n5 jaar",
+            "datamanagement\n5 jaar",
+            "Datamodellering\n5 jaar",
+            "DMBOK\n5 jaar",
+            "WOO\n5 jaar"
+        ],
+        "wensen":[
+            "BI tool",
+            "Data-integratie",
+            "ETL",
+            "Excel tooling",
+            "SAS",
+            "SQL"
+        ]
+    }
+}
