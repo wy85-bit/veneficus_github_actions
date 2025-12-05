@@ -1,27 +1,31 @@
 import os
 import time
-from datetime import datetime
 import pandas as pd
+from datetime import datetime
 
 # Selenium imports
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 
-# Auto-install matching ChromeDriver
+# Auto-install correct ChromeDriver
 import chromedriver_autoinstaller
 
 
 # ============================================================
-# DRIVER SETUP
+#  OUTPUT DIRECTORY (ALWAYS EXISTS)
+# ============================================================
+OUTPUT_DIR = "output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+# ============================================================
+#  DRIVER SETUP
 # ============================================================
 def get_driver():
-    """
-    Creates a stable, GitHub-Actions-compatible Chrome driver.
-    Automatically installs the right ChromeDriver version.
-    """
+    """Configures a Chrome driver compatible with GitHub Actions."""
     chromedriver_autoinstaller.install()
 
     options = Options()
@@ -30,27 +34,36 @@ def get_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
 
-    return webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options)
+    return driver
 
 
 # ============================================================
-# LOGIN + NAVIGATION
+#  LOGIN PROCESS
 # ============================================================
 def login(driver):
-    """Log into Striive with robust Angular-ready waits."""
     wait = WebDriverWait(driver, 30)
 
-    email = wait.until(EC.visibility_of_element_located((By.ID, "email")))
-    pw = wait.until(EC.visibility_of_element_located((By.ID, "password")))
+    # Wait until login form is rendered by Angular
+    email_input = wait.until(
+        EC.visibility_of_element_located((By.ID, "email"))
+    )
+    password_input = wait.until(
+        EC.visibility_of_element_located((By.ID, "password"))
+    )
 
-    email.send_keys(os.getenv("STRIIVE_EMAIL"))
-    pw.send_keys(os.getenv("STRIIVE_PASSWORD"))
+    email_input.send_keys(os.getenv("STRIIVE_EMAIL"))
+    password_input.send_keys(os.getenv("STRIIVE_PASSWORD"))
 
-    button = wait.until(EC.element_to_be_clickable((By.XPATH, "//form/button")))
-    button.click()
+    login_button = wait.until(
+        EC.element_to_be_clickable((By.XPATH, "//form/button"))
+    )
+    login_button.click()
 
-    # Wait until the job inbox is visible
-    wait.until(EC.presence_of_element_located((By.TAG_NAME, "app-job-request-inbox")))
+    # Wait for job inbox to appear
+    wait.until(
+        EC.presence_of_element_located((By.TAG_NAME, "app-job-request-inbox"))
+    )
     time.sleep(1)
 
 
@@ -58,8 +71,8 @@ def go_to_page(driver):
     url = "https://supplier.striive.com/inbox/all?searchTerm=data"
     driver.get(url)
 
-    # Wait until Angular login component loads
-    WebDriverWait(driver, 20).until(
+    # Wait until the Angular login component loads
+    WebDriverWait(driver, 25).until(
         EC.presence_of_element_located((By.TAG_NAME, "app-login"))
     )
 
@@ -68,10 +81,10 @@ def go_to_page(driver):
 
 
 # ============================================================
-# SCRAPING HELPERS
+#  SCRAPING HELPERS
 # ============================================================
 def safe_get_text(driver, xpath):
-    """Return text of an element or '' if not found."""
+    """Return text if found, otherwise empty string."""
     try:
         return driver.find_element(By.XPATH, xpath).text
     except:
@@ -80,35 +93,32 @@ def safe_get_text(driver, xpath):
 
 def get_demands(driver):
     items = []
-    for i in range(1, 21):
-        try:
-            txt = safe_get_text(driver, f'(//section[3]//ul)[1]/li[{i}]')
-            if txt:
-                items.append(txt)
-        except:
-            continue
+    for i in range(1, 25):
+        txt = safe_get_text(driver, f"(//section[3]//ul)[1]/li[{i}]")
+        if txt:
+            items.append(txt)
     return items
 
 
 def get_wishes(driver):
     items = []
-    for i in range(1, 21):
-        try:
-            txt = safe_get_text(driver, f'(//section[3]//ul)[2]/li[{i}]//span/span')
-            if txt:
-                items.append(txt)
-        except:
-            continue
+    for i in range(1, 25):
+        txt = safe_get_text(driver, f"(//section[3]//ul)[2]/li[{i}]//span/span")
+        if txt:
+            items.append(txt)
     return items
 
 
 def extract_text(driver):
-    """Extract job description from dynamic section indexes."""
-    return safe_get_text(driver, "//section[4]/p") or safe_get_text(driver, "//section[5]/p")
+    """Dynamic description location handling."""
+    return (
+        safe_get_text(driver, "//section[4]/p")
+        or safe_get_text(driver, "//section[5]/p")
+    )
 
 
 def extract_job(driver, uid):
-    """Return one job row as dict."""
+    """Collects all structured job data fields."""
     return {
         "UID": uid,
         "referentie_code": safe_get_text(driver, '(//span[@class="field-value"])[7]'),
@@ -116,32 +126,36 @@ def extract_job(driver, uid):
         "plaats": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[2]'),
         "uren": safe_get_text(driver, '(//section[2]//span[@class="field-value"])[1]'),
         "text": extract_text(driver),
-        "start": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[3]') if c.isdigit() or c == '-'),
+        "start": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[3]') if c.isdigit() or c == "-"),
         "eind": safe_get_text(driver, '(//span[@class="field-value"])[3]'),
-        "deadline": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[4]') if c.isdigit() or c == '-'),
+        "deadline": "".join(c for c in safe_get_text(driver, '(//section[2]//span[@class="field-value"])[4]') if c.isdigit() or c == "-"),
         "eisen": get_demands(driver),
         "wensen": get_wishes(driver),
     }
 
 
 # ============================================================
-# MAIN SCRAPER
+#  MAIN SCRAPER
 # ============================================================
 def main():
-    output_file = f"striive_{datetime.now().strftime('%Y-%m-%d')}.json"
+    output_file = os.path.join(
+        OUTPUT_DIR,
+        f"striive_{datetime.now().strftime('%Y-%m-%d')}.json"
+    )
 
     rows = []
     uid = 0
 
     with get_driver() as driver:
         go_to_page(driver)
+        wait = WebDriverWait(driver, 15)
 
-        wait = WebDriverWait(driver, 20)
+        # Wait for the job list
+        wait.until(
+            EC.presence_of_element_located((By.TAG_NAME, "app-job-request-list"))
+        )
 
-        # Locate job list container
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "app-job-request-list")))
-
-        # Scrape first 4 items
+        # Scrape visible list items
         for idx in range(1, 5):
             try:
                 item = driver.find_element(By.XPATH, f"(//app-job-request-list-item)[{idx}]")
@@ -154,7 +168,7 @@ def main():
             except:
                 continue
 
-        # Scrape next blocks of items (5–9) for several scroll cycles
+        # Scroll & scrape next lists
         for _ in range(10):
             for idx in range(5, 10):
                 try:
@@ -168,20 +182,24 @@ def main():
                 except:
                     continue
 
-    # Save to JSON
+    # Convert to DataFrame
     df = pd.DataFrame(rows).drop_duplicates(subset=["referentie_code"])
+
+    # DEBUG: Show save path
+    print("Saving JSON to:", os.path.abspath(output_file))
+
+    # Write file
     df.to_json(output_file, orient="index", indent=4)
 
-    print(f"Saved job data → {output_file}")
-
-    import os
-
+    # Confirm file existence
     if os.path.exists(output_file):
-        print("FILE EXISTS:", output_file)
+        print("✔ FILE EXISTS:", os.path.abspath(output_file))
     else:
-        print("❌ ERROR: Output file was NOT created")
+        print("❌ ERROR: File not created:", os.path.abspath(output_file))
+
+
 # ============================================================
-# ENTRY
+#  ENTRY POINT
 # ============================================================
 if __name__ == "__main__":
     main()
