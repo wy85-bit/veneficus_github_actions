@@ -9,9 +9,14 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write     # REQUIRED to push changes
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,19 +33,25 @@ jobs:
           sudo apt-get install -y google-chrome-stable
 
       - name: Install Python dependencies
-        run: |
+        run: 
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Striive scraper
+      - name: Run Striive Scraper
         env:
           STRIIVE_EMAIL: ${{ secrets.STRIIVE_EMAIL }}
           STRIIVE_PASSWORD: ${{ secrets.STRIIVE_PASSWORD }}
         run: |
           python striive_scraper.py
 
-      - name: Upload scraped JSON
-        uses: actions/upload-artifact@v4
-        with:
-          name: striive-data
-          path: output/*.json
+      - name: Commit and push JSON file
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          git add striive_*.json
+
+          # Don't fail if there's nothing to commit
+          git commit -m "Update Striive JSON data" || echo "No changes to commit"
+
+          git push
