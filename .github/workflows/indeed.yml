@@ -16,6 +16,16 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
+      - name: Debug - show actual working directory
+        run: |
+          pwd
+          echo "---- LIST ROOT ----"
+          ls -la .
+          echo "---- LIST REPO DIR ----"
+          ls -la /home/runner/work
+          ls -la /home/runner/work/${{ github.event.repository.name }}
+          ls -la /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+
       - name: Detect working directory
         id: finddir
         run: |
