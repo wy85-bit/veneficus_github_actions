@@ -3,7 +3,7 @@ name: Run Indeed Scraper
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 8 * * *"  # elke dag om 08:00 uur
+    - cron: "0 7 * * *"
 
 permissions:
   contents: write
@@ -17,33 +17,34 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-            python-version: "3.10"
+          python-version: "3.10"
 
       - name: Install Chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Run scraper
         run: python indeed_scraper.py
 
+      - name: Upload debug page (if exists)
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug_html
+          path: debug_page.html
+        continue-on-error: true
+
       - name: Commit JSON file(s)
         run: |
-          echo "Current directory:"
-          pwd
-          echo "Files:"
-          ls -R
-
-          git config user.email "github-actions@github.com"
           git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-          # zoek alle JSON-bestanden in de hele repo
           find . -name "indeed_*.json" -exec git add {} +
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Update Indeed data $(date '+%Y-%m-%d %H:%M:%S')"
+            git commit -m "Indeed update $(date)"
             git push
           fi
