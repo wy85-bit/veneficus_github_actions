@@ -3,6 +3,7 @@ import time
 import random
 import traceback
 from datetime import datetime
+import os
 
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
@@ -16,63 +17,68 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 
 # ---------------------------------------------------------
-# Anti-bot Chrome (GitHub Actions compatible)
+# Configure Selenium with WebShare.io Proxy
 # ---------------------------------------------------------
 def get_driver():
+    proxy = os.getenv("PROXY_URL")   # from GitHub Secrets
+        
     options = Options()
+    options.add_argument("--headless=new")  
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    # Best headless mode to avoid detection
-    options.add_argument("--headless=new")
+    # Proxy for Webshare
+    if proxy:
+        options.add_argument(f"--proxy-server={proxy}")
+        print("🔌 Using proxy:", proxy)
 
-    # Anti-bot
+    # Anti-detection
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-    options.add_argument("--window-size=1920,1080")
-
-    # Required in GitHub Actions
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
 
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
         options=options
     )
 
-    # Remove webdriver fingerprint
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    # Hide Selenium fingerprint
+    driver.execute_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    )
 
     return driver
 
 
 # ---------------------------------------------------------
-# Write debug HTML ALWAYS
+# Debug HTML writer
 # ---------------------------------------------------------
-import os
-
 def save_debug(driver, name):
-    path = os.path.join(os.getcwd(), f"{name}.html")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-    print(f"📝 Debug saved at {path}")
+    try:
+        with open(f"{name}.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        print(f"📝 Saved debug HTML: {name}.html")
+    except Exception as e:
+        print("⚠️ Failed to write debug HTML:", str(e))
 
 
 # ---------------------------------------------------------
-# Scrape jobcards
+# Scrape Indeed job cards
 # ---------------------------------------------------------
 def scrape(driver):
     jobs = []
     pages_scraped = 0
-    pages_to_scrape = 8
+    pages_to_scrape = 5
 
     while pages_scraped < pages_to_scrape:
-        time.sleep(random.uniform(2, 5))
+        time.sleep(random.uniform(3, 6))
 
         job_cards = driver.find_elements(By.CSS_SELECTOR, ".cardOutline")
-        save_debug(driver, f"debug_page_{pages_scraped}")  # always save
+        save_debug(driver, f"debug_page_{pages_scraped}")
 
         if not job_cards:
-            print("⚠ Geen jobcards gevonden → pagina geblokkeerd of layout anders")
+            print("⚠ No job cards found on this page.")
             return jobs
 
         for job_card in job_cards:
@@ -84,35 +90,50 @@ def scrape(driver):
             except:
                 continue
 
+            # Title
             try:
-                title = WebDriverWait(driver, 6).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".jobsearch-JobInfoHeader-title"))
+                title_el = WebDriverWait(driver, 6).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, ".jobsearch-JobInfoHeader-title")
+                    )
                 )
-                job["title"] = title.text
+                job["title"] = title_el.text
             except:
                 continue
 
+            # Job details container
             try:
                 details = driver.find_element(By.CSS_SELECTOR, ".jobsearch-RightPane")
             except:
                 continue
 
-            try: job["company"] = details.find_element(By.CSS_SELECTOR, "div[data-company-name='true']").text
+            # Extract fields
+            try: job["company"] = details.find_element(
+                    By.CSS_SELECTOR, "div[data-company-name='true']"
+                ).text
             except: pass
 
             try: job["location"] = driver.find_element(By.ID, "jobLocationText").text
             except: pass
 
-            try: job["pay"] = driver.find_element(By.CSS_SELECTOR, "#salaryInfoAndJobType span").text
+            try: job["pay"] = driver.find_element(
+                    By.CSS_SELECTOR, "#salaryInfoAndJobType span"
+                ).text
             except: pass
 
-            try: job["description"] = details.find_element(By.ID, "jobDescriptionText").text
+            try: job["description"] = details.find_element(
+                    By.ID, "jobDescriptionText"
+                ).text
             except: pass
 
             jobs.append(job)
+            time.sleep(random.uniform(1, 2))
 
+        # Next page
         try:
-            next_btn = driver.find_element(By.CSS_SELECTOR, "a[data-testid='pagination-page-next']")
+            next_btn = driver.find_element(
+                By.CSS_SELECTOR, "a[data-testid='pagination-page-next']"
+            )
             next_btn.click()
         except NoSuchElementException:
             break
@@ -128,36 +149,40 @@ def scrape(driver):
 def main():
     driver = get_driver()
 
-    search_urls = [
-        "https://nl.indeed.com/jobs?q=Data&l=Nederland&fromage=3",
-        "https://nl.indeed.com/jobs?q=machine+learning+engineer&fromage=3",
+    urls = [
+        "https://nl.indeed.com/jobs?q=Data&fromage=3",
+        "https://nl.indeed.com/jobs?q=machine+learning&fromage=3",
         "https://nl.indeed.com/jobs?q=data+analyst&fromage=3",
     ]
 
     all_jobs = []
 
     try:
-        for idx, url in enumerate(search_urls):
+        for i, url in enumerate(urls):
             print("🔎 Scraping:", url)
             driver.get(url)
             time.sleep(5)
-
-            save_debug(driver, f"debug_loaded_{idx}")
+            save_debug(driver, f"debug_loaded_{i}")
 
             jobs = scrape(driver)
             all_jobs.extend(jobs)
 
-        driver.quit()
-
     except Exception as e:
-        print("❌ ERROR:", e)
-        print(traceback.format_exc())
         save_debug(driver, "debug_crash")
+        print("❌ Error:", e)
+        print(traceback.format_exc())
         raise
 
-    # Write JSON
+    finally:
+        driver.quit()
+
+    # Save JSON
     filename = f"indeed_{datetime.now().strftime('%Y-%m-%d')}.json"
     with open(filename, "w", encoding="utf-8") as f:
         json.dump({"jobs": all_jobs}, f, indent=4)
 
     print("📁 Saved:", filename)
+
+
+if __name__ == "__main__":
+    main()
