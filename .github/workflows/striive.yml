@@ -1,16 +1,16 @@
 name: Striive Scraper
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # Allow manual trigger
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 6 * * *"   # Runs every day at 06:00 UTC
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -18,25 +18,29 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Chrome
+      - name: Install Google Chrome
         run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run scraper
+      - name: Run Striive scraper
         env:
           STRIIVE_EMAIL: ${{ secrets.STRIIVE_EMAIL }}
           STRIIVE_PASSWORD: ${{ secrets.STRIIVE_PASSWORD }}
         run: |
           python striive_scraper.py
 
-      - name: Upload JSON result
+      - name: Upload scraped JSON
         uses: actions/upload-artifact@v4
         with:
-          name: striive-output
-          path: striive_*.json
+          name: striive-data
+          path: striive_*.j*_
